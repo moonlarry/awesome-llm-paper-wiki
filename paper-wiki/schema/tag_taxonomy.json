@@ -1,0 +1,60 @@
+{
+  "dimensions": {
+    "task": {
+      "label": "Task",
+      "description": "The research problem or prediction target",
+      "abbr_map": {}
+    },
+    "method": {
+      "label": "Method",
+      "description": "Algorithm, model, or technique used",
+      "abbr_map": {}
+    },
+    "dataset": {
+      "label": "Dataset",
+      "description": "Dataset or data source used for experiments",
+      "abbr_map": {}
+    },
+    "domain": {
+      "label": "Domain",
+      "description": "Research object or domain area",
+      "abbr_map": {}
+    },
+    "signal": {
+      "label": "Signal",
+      "description": "Input signals or measurements",
+      "abbr_map": {}
+    },
+    "application": {
+      "label": "Application",
+      "description": "Application scenario or target system",
+      "abbr_map": {}
+    },
+    "metric": {
+      "label": "Metric",
+      "description": "Evaluation metric",
+      "abbr_map": {}
+    },
+    "journal": {
+      "label": "Journal",
+      "description": "Publication venue (auto-populated)",
+      "abbr_map": {}
+    },
+    "custom": {
+      "label": "Custom",
+      "description": "User-defined tags",
+      "abbr_map": {}
+    }
+  },
+  "tags": {
+    "task": [],
+    "method": [],
+    "dataset": [],
+    "domain": [],
+    "signal": [],
+    "application": [],
+    "metric": [],
+    "journal": [],
+    "custom": []
+  }
+}

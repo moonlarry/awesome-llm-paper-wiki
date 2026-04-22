@@ -1,0 +1,69 @@
+{
+  "project_root": ".",
+  "paper_root": "paper",
+  "output_lang": "zh",
+  "directions": [],
+  "paths": {
+    "library": "library",
+    "papers": "library/papers",
+    "reports": "library/reports",
+    "indexes": "library/indexes",
+    "manifests": "workspace/manifests",
+    "logs": "workspace/logs"
+  },
+  "organize": {
+    "default_target_for_unknown": "UnknownJournal",
+    "move_only_direction_root_files_by_default": true,
+    "fix_misplaced_requires_flag": true,
+    "write_frontmatter_back": false,
+    "dry_run_first": true
+  },
+  "journal": {
+    "aliases_path": "schema/journal_aliases.json",
+    "default_abbr_strategy": "capitalized_initials",
+    "single_word_journal_strategy": "preserve_known_or_uppercase"
+  },
+  "tagging": {
+    "taxonomy_path": "schema/tag_taxonomy.json",
+    "keyword_rules_path": "schema/keyword_rules.json",
+    "preserve_user_tags": true
+  },
+  "templates": {
+    "generic_dir": "templates/generic",
+    "domains_dir": "templates/domains",
+    "regeneration_threshold": 0.2,
+    "domain_min_papers": 10,
+    "registry": {}
+  },
+  "web_search": {
+    "default_top": 10,
+    "min_citations": 5,
+    "openalex_email": "",
+    "openalex_api_key": "",
+    "semantic_scholar_api_key": "",
+    "clipper_inbox": "workspace/web-inbox",
+    "output_root": "paper/web_search",
+    "arxiv_fulltext_default": true,
+    "arxiv_output_root": "paper/web_search",
+    "arxiv_fulltext_priority": [
+      "html",
+      "tex",
+      "pdf",
+      "api"
+    ],
+    "domain_profiles": {
+      "ExampleDirection": {
+        "strict": true,
+        "keywords": [],
+        "required_groups": [],
+        "negative_keywords": [],
+        "preferred_venues": []
+      }
+    },
+    "sources": [
+      "openalex",
+      "semanticscholar",
+      "arxiv"
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "_comment": "Keyword rules for automatic tag assignment. Pattern is a case-insensitive regex matched against title, abstract, and keywords. Add your own rules below.",
+  "rules": [
+    {
+      "pattern": "transfer learning|domain adaptation|fine-tun",
+      "tag": "transfer learning",
+      "dimension": "method"
+    },
+    {
+      "pattern": "transformer|attention mechanism|self-attention|BERT|GPT",
+      "tag": "Transformer",
+      "dimension": "method"
+    },
+    {
+      "pattern": "LSTM|long short.term memory|GRU|gated recurrent",
+      "tag": "RNN/LSTM",
+      "dimension": "method"
+    },
+    {
+      "pattern": "graph neural network|GNN|graph convolutional|GCN|GAT",
+      "tag": "GNN",
+      "dimension": "method"
+    },
+    {
+      "pattern": "physics.informed|PINN|physics.constrained",
+      "tag": "physics-informed",
+      "dimension": "method"
+    },
+    {
+      "pattern": "uncertainty quantification|Bayesian|conformal prediction",
+      "tag": "uncertainty quantification",
+      "dimension": "method"
+    },
+    {
+      "pattern": "federated learning|federated",
+      "tag": "federated learning",
+      "dimension": "method"
+    },
+    {
+      "pattern": "meta.learning|few.shot|zero.shot",
+      "tag": "meta-learning",
+      "dimension": "method"
+    }
+  ]
+}
