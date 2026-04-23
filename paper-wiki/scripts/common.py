@@ -694,6 +694,87 @@ def load_aliases(config: dict[str, Any]) -> dict[str, str]:
     return aliases
 
 
+def journal_alias_tokens(name: str) -> list[str]:
+    normalized = normalize_key(name)
+    stopwords = STOPWORDS | {"journal", "the"}
+    return [token for token in normalized.split() if token and token not in stopwords]
+
+
+def journal_alias_initials(name: str) -> str:
+    return "".join(token[0] for token in journal_alias_tokens(name) if token).lower()
+
+
+def edit_distance(left: str, right: str) -> int:
+    if left == right:
+        return 0
+    if not left:
+        return len(right)
+    if not right:
+        return len(left)
+    previous = list(range(len(right) + 1))
+    for left_index, left_char in enumerate(left, start=1):
+        current = [left_index]
+        for right_index, right_char in enumerate(right, start=1):
+            current.append(
+                min(
+                    previous[right_index] + 1,
+                    current[right_index - 1] + 1,
+                    previous[right_index - 1] + (left_char != right_char),
+                )
+            )
+        previous = current
+    return previous[-1]
+
+
+def journal_alias_names_compatible(left: str, right: str) -> bool:
+    left_norm = normalize_key(left)
+    right_norm = normalize_key(right)
+    if left_norm == right_norm:
+        return True
+    left_tokens = journal_alias_tokens(left)
+    right_tokens = journal_alias_tokens(right)
+    if left_tokens and right_tokens and set(left_tokens) == set(right_tokens):
+        return True
+    if left_norm == journal_alias_initials(right) or right_norm == journal_alias_initials(left):
+        return True
+    if len(left_tokens) == len(right_tokens) == 1 and edit_distance(left_tokens[0], right_tokens[0]) <= 2:
+        return True
+    return False
+
+
+def validate_journal_aliases(config: dict[str, Any]) -> list[dict[str, Any]]:
+    alias_path = ROOT / config["journal"]["aliases_path"]
+    if not alias_path.exists():
+        return []
+    raw = json.loads(alias_path.read_text(encoding="utf-8"))
+    by_abbr: dict[str, list[str]] = {}
+    for name, abbr in raw.items():
+        clean_abbr = sanitize_dir_name(str(abbr))
+        by_abbr.setdefault(clean_abbr, []).append(str(name))
+
+    issues: list[dict[str, Any]] = []
+    for abbr, names in sorted(by_abbr.items()):
+        unique_names = list(dict.fromkeys(names))
+        if len(unique_names) <= 1:
+            continue
+        base = unique_names[0]
+        incompatible = [name for name in unique_names[1:] if not journal_alias_names_compatible(base, name)]
+        if not incompatible:
+            continue
+        issues.append(
+            {
+                "severity": "error",
+                "type": "possible_alias_collision",
+                "abbr": abbr,
+                "aliases": unique_names,
+                "base_alias": base,
+                "conflicting_aliases": incompatible,
+                "suggested_fix": "Keep the existing journal abbreviation for the first real journal; assign a semantic suffix to later distinct journals.",
+            }
+        )
+    return issues
+
+
 def known_journal_dirs(direction_path: Path) -> set[str]:
     if not direction_path.exists():
         return set()

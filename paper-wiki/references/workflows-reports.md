@@ -1,41 +1,68 @@
 # Report Workflows Reference
 
+## Table of Contents
+
+- [Workflow 5: journal-report](#workflow-5-journal-report)
+- [Workflow 6: direction-report](#workflow-6-direction-report)
+- [Workflow 7: stat-report](#workflow-7-stat-report)
+- [Workflow 8: idea-survey](#workflow-8-idea-survey)
+- [Workflow 12: submission-recommend](#workflow-12-submission-recommend)
+- [Workflow 13: revision-suggest](#workflow-13-revision-suggest)
+- [Workflow 17: paper-read](#workflow-17-paper-read)
+- [Workflow 18: direction-review](#workflow-18-direction-review)
+
 ## Workflow 5: journal-report
 
-Generate a literature survey report for a specific journal.
+Prepare a full-text literature survey report for a specific journal.
 
-### Input
+### Formal CLI
 
-Journal name or abbreviation (e.g., "JOURNAL", "PUB", "JPS")
+```bash
+python scripts/report_family.py --mode journal --journal JOURNAL
+python scripts/report_family.py --mode journal --journal JOURNAL --direction ExampleDirection --query "topic"
+python scripts/report_family.py --mode journal --journal JOURNAL --metadata-only
+```
 
 ### Steps
 
-1. Resolve journal abbreviation via `schema/journal_aliases.json`
-2. Read all canonical pages where `journal_abbr` matches
-3. Select template (domain-specific or generic)
-4. Analyze: topic distribution, method landscape, dataset usage, temporal trends, high-value papers, research gaps
-5. Generate report → `library/reports/journal/{journal_abbr}-report-{date}.md`
-6. Apply Report Citation Policy
+1. Load canonical records from `library/indexes/canonical_pages.json`, or rebuild in memory if missing.
+2. Resolve and filter by journal name or abbreviation.
+3. Narrow by `--direction` or `--query` only when explicitly provided.
+4. Partition records into readable records with valid `source_path` and skipped records.
+5. Audit journal identity from DOI, URL, source-page journal title, or full-text journal heading; do not rely only on folder name or canonical `journal_abbr`.
+6. Save one disposable run bundle under `workspace/cache/fulltext-report/{run_key}.json`.
+7. Read all `records[*].source_path`, write the final report to `library/reports/journal/{journal_key}-report-{date}.md`, and apply the Report Citation Policy.
+8. Include a `Paper Coverage Matrix` when the report claims full coverage.
+9. Log preparation/completion to `workspace/logs/report_generation.md`.
+
+Use `--metadata-only` only when a deterministic canonical-metadata report is explicitly desired.
 
 ---
 
 ## Workflow 6: direction-report
 
-Generate a research status report for a specific research direction or topic.
+Prepare a full-text direction or topic status report from local canonical pages.
 
-### Input
+### Formal CLI
 
-- Research direction or topic
-- Optional: `--web` flag for supplementary web search
+```bash
+python scripts/report_family.py --mode direction --query "topic"
+python scripts/report_family.py --mode direction --direction ExampleDirection --query "topic"
+python scripts/report_family.py --mode direction --direction ExampleDirection --query "topic" --metadata-only
+```
 
 ### Steps
 
-1. Search local vault by tags for matching papers
-2. Read all matching canonical pages
-3. **(If --web)**: Use web_search.py for arXiv full-text
-4. Select template
-5. Analyze: core problem, method classification, datasets, performance, trends, open problems
-6. Generate report → `library/reports/direction/{topic_slug}-report-{date}.md`
+1. Load canonical records from the whole vault.
+2. If `--direction` is set, restrict to that exact direction.
+3. Apply query matching using title, abstract, keywords, and tag fields.
+4. Partition selected records into readable records with valid `source_path` and skipped records.
+5. Save one disposable run bundle under `workspace/cache/fulltext-report/{run_key}.json`.
+6. Read all `records[*].source_path` and write the final report to `library/reports/direction/{topic_slug}-report-{date}.md`.
+7. Log preparation/completion to `workspace/logs/report_generation.md`.
+
+Final direction-report conclusions must come from full-text evidence, not canonical metadata alone.
+Use `--metadata-only` only when explicitly requested.
 
 ---
 
@@ -68,10 +95,13 @@ Survey existing literature for similarity to a user's research idea and assess n
 ### Steps
 
 1. Extract key concepts from idea text
-2. Search local vault by tags and keywords
-3. Assess similarity for each matched paper
-4. Assess overall novelty
-5. Generate report → `library/reports/idea/{idea_slug}-survey-{date}.md`
+2. Use canonical pages as an index to locate source files through `source_path`
+3. Read relevant source Markdown files under `paper/`
+4. Assess similarity for each matched paper after reading full evidence
+5. If web supplementation is needed, run `web_search.py find` first and read the resulting source Markdown
+6. Generate report → `library/reports/idea/{idea_slug}-survey-{date}.md`
+
+Do not treat keyword/tag similarity or metadata-only matches as final novelty evidence.
 
 ---
 
@@ -128,3 +158,70 @@ Read one paper deeply and generate a structured reading note.
 3. Answer: problem, importance, method, why it works, conclusions, next steps
 4. Generate reading note using `templates/generic/paper_reading.md`
 5. Save to `library/reports/paper/{date}-{paper_id}-reading.md`
+
+Ground every answer in the selected paper text. Label inference explicitly and write "Not available
+in the provided paper text" when evidence is missing.
+
+---
+
+## Workflow 18: direction-review
+
+Prepare a review-writing bundle for one direction, combining local full-text evidence, related vault context, and default web supplementation.
+
+This workflow is Agent-driven with a lightweight preparation script, not a `report_family.py` mode.
+
+### Formal preparation command
+
+```bash
+python scripts/prepare_direction_review.py --direction ExampleDirection
+python scripts/prepare_direction_review.py --direction ExampleDirection --focus "topic"
+python scripts/prepare_direction_review.py --direction ExampleDirection --focus "topic" --top 6 --dry-run
+```
+
+### Input
+
+- Required: `--direction {existing_direction}`
+- Optional: `--focus "topic"`
+- Optional: `--top N` for approximate total web supplementation volume
+- Optional: `--dry-run`
+
+### Steps
+
+1. Validate that the direction exists and already has canonical pages with usable `source_path`; otherwise prompt the user to run `ingest` first.
+2. Load canonical pages for the direction.
+3. If `--focus` is set, restrict the local set using title, abstract, keyword, and tag matching.
+4. Partition selected local records into:
+   - readable records with valid `source_path`
+   - skipped records with missing or unreadable source files
+5. Derive 1-3 web queries from:
+   - the direction name
+   - the optional focus text
+   - top local task, method, and application tags when available
+6. Run default web supplementation using the existing `web_search.py` logic:
+   - reuse current ranking, domain filtering, and arXiv full-text behavior
+   - allow both new formal full-text saves and web-layer metadata saves into the review bundle
+7. Gather related context from `library/reports/journal/`, `library/reports/direction/`, `library/reports/idea/`, and `library/reports/web/`.
+8. Build review hints: candidate method categories, common datasets, common metrics, common applications, and suggested comparison tables.
+9. Save preparation outputs:
+   - `workspace/cache/fulltext-review/{run_key}.json`
+   - `workspace/manifests/direction_review_prepare.json`
+10. Read every readable record in the bundle and write the final review to `library/reports/review/{direction-or-focus}-review-{date}.md`.
+
+### Writing rules
+
+- Use `templates/generic/direction_review.md` as the scaffold.
+- Keep the review domain-agnostic; infer method categories, datasets, metrics, and application groupings from the current corpus.
+- Do not hardcode field-specific method taxonomies or section names from any pre-existing domain template.
+- Include at least one comparison table in every major section.
+- End every major method category with a limitations paragraph.
+- Standard reviews target 40-80 cited references; deep or comprehensive reviews target 80-120 cited references.
+- Related reports are secondary context only; substantive conclusions must come from paper text.
+
+### Notes
+
+- `direction-review` is not a replacement for `direction-report`.
+- `direction-report` remains the direction/topic status-report workflow.
+- `direction-review` is the survey-style literature-review workflow.
+- `idea-survey` remains the novelty or similarity workflow for a specific idea.
+- `--dry-run` still writes the preparation bundle and manifest, but it does not write the final
+  review Markdown and may include preview-only web records that are not yet readable on disk.

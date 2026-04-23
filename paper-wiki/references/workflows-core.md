@@ -1,5 +1,12 @@
 # Core Workflows Reference
 
+## Table of Contents
+
+- [Workflow 1: init](#workflow-1-init)
+- [Workflow 2: scan-organize](#workflow-2-scan-organize)
+- [Workflow 3: ingest](#workflow-3-ingest)
+- [Workflow 4: tag](#workflow-4-tag)
+
 ## Workflow 1: init
 
 Initialize the vault structure. Creates missing directories and seed files.
@@ -9,9 +16,9 @@ Initialize the vault structure. Creates missing directories and seed files.
 1. Check if project root has `config.json` — if not, create default config
 2. Create missing directories:
    - `schema/`
-   - `library/papers/`, `library/reports/journal/`, `library/reports/direction/`, `library/reports/idea/`, `library/reports/paper/`, `library/reports/submission/`
-   - `library/indexes/`, `library/indexes/journals/`
-   - `workspace/cache/`, `workspace/manifests/`, `workspace/logs/`
+   - `library/papers/`, `library/reports/journal/`, `library/reports/direction/`, `library/reports/idea/`, `library/reports/paper/`, `library/reports/submission/`, `library/reports/vault/`
+   - `library/indexes/`
+   - `workspace/cache/`, `workspace/manifests/`, `workspace/logs/`, `workspace/legacy/`
    - `templates/generic/`, `templates/domains/`
 3. Create `schema/tag_taxonomy.json` if missing
 4. Create `schema/keyword_rules.json` if missing
@@ -42,6 +49,8 @@ Scan `paper/` for all Markdown files and optionally organize them into journal f
 3. Display plan summary to user
 
 4. **(If "check duplicates")**: Scan for duplicate files by SHA256 checksums
+   - Run: `python scripts/detect_duplicates.py --all`
+   - Output: `workspace/manifests/duplicate_report.json` and `.md`
 
 5. **(If "organize by journal")**: Ask user to confirm, then:
    - Run: `python scripts/organize_by_journal.py --all --apply`
@@ -105,6 +114,9 @@ Manage the tag system: view, edit, batch-assign, and analyze tags.
 3. Write updated tags back to canonical page frontmatter
 
 4. Log changes to `workspace/logs/tag_operations.md`
+
+`scan_tags.py` is read-only and never modifies canonical pages. Tag write-back must use
+`ingest_batch.py --apply-tags`.
 
 ### Commands
 
