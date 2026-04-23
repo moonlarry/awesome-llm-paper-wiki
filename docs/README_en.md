@@ -77,12 +77,14 @@ Every time you add new papers, run these three steps:
 "Ingest papers"       → generate canonical pages, extract metadata, and assign tags automatically
 ```
 
-#### Step 3.5: Generate a Domain Template
+#### Step 3.5: Domain Template Status
 
-When a research direction has accumulated enough papers (typically 10 or more), you can generate a domain template to improve report quality:
+The current version does not provide a standalone `domain-template` workflow or default automatic generation command. Domain templates are template-system resources:
 
 ```text
-"Generate domain template for {Direction}" → generate a domain-specific template for that direction
+templates/generic/                 → default generic templates
+templates/domains/{Direction}/      → optional domain templates when they already exist
+status / lint                       → inspect template registry status and staleness hints
 ```
 
 #### Step 4: Generate Reports or Submission Guidance
@@ -93,14 +95,14 @@ After papers are ingested, you can run analyses such as:
 "Read this paper: {path}"             → single-paper reading note
 "Journal report for {journal}"        → journal survey report
 "Direction report for {topic}"        → direction survey report
-"Write report for {topic}"            → literature review writing (regular mode cites about 40-80 papers; deep mode about 80-160)
+"Write a literature review for {topic}" → literature review writing (regular mode cites about 40-80 papers; deep mode about 80-120)
 "Recommend submission"                → journal recommendation (requires a local paper draft)
 "Revision suggestions for {journal}"  → revision suggestions for a target journal or special issue
 ```
 
 ## 🛠️ Full Workflow List
 
-`awesome-llm-paper-wiki` currently includes 19 workflows, and **each one can be triggered independently by instruction.**
+`awesome-llm-paper-wiki` currently includes 18 workflows, and **each one can be triggered independently by instruction.**
 
 | # | Workflow | Example Trigger | Module |
 |---|--------|----------|------|
@@ -108,21 +110,20 @@ After papers are ingested, you can run analyses such as:
 | 2 | **scan-organize** | "scan papers" / "整理期刊" | Preprocessing |
 | 3 | **ingest** | "ingest papers" / "文档入库" | Preprocessing |
 | 4 | **tag** | "assign tags" / "分配打分与标签" | Preprocessing |
-| 5 | **domain-template** | "generate domain template" / "生成领域模板" | Domain Template |
-| 6 | **journal-report** | "XXX journal report" / "XXX 期刊报告" | Journal Survey |
-| 7 | **direction-report** | "TSF report" / "time series forecasting 方向报告" | Direction Survey |
-| 8 | **stat-report** | "method stats" / "论文使用方法统计" | Statistical Survey |
-| 9 | **idea-survey** | "idea survey" / "Idea 新颖性调研" | Idea Review |
-| 10 | **web-find** | "web find" / "联网检索论文" | Web Search |
-| 11 | **web-digest** | "daily digest" / "近期 arXiv 精选" | Web Recommendation |
-| 12 | **web-import-clipper** | "import web clipper" / "导入剪藏文件" | New Paper Processing |
-| 13 | **submission-recommend** | "recommend submission" / "投稿推荐" | Submission Guidance |
-| 14 | **revision-suggest** | "revision suggestions" / "修改建议" | Revision Guidance |
-| 15 | **status** | "vault status" / "查看知识库状态" | Environment Check |
-| 16 | **lint** | "health check" / "错误/冲突与安全检查" | Environment Check |
-| 17 | **pipeline** | "full pipeline" / "执行一条龙全流程" | Composite Pipeline |
-| 18 | **paper-read** | "read this paper" / "单篇文献精读" | Single-Paper Reading |
-| 19 | **direction-review** | "direction review" / "方向综述" | Literature Review Writing |
+| 5 | **journal-report** | "XXX journal report" / "XXX 期刊报告" | Journal Survey |
+| 6 | **direction-report** | "TSF report" / "time series forecasting 方向报告" | Direction Survey |
+| 7 | **stat-report** | "method stats" / "论文使用方法统计" | Statistical Survey |
+| 8 | **idea-survey** | "idea survey" / "Idea 新颖性调研" | Idea Review |
+| 9 | **web-find** | "web find" / "联网检索论文" | Web Search |
+| 10 | **web-digest** | "daily digest" / "近期 arXiv 精选" | Web Recommendation |
+| 11 | **web-import-clipper** | "import web clipper" / "导入剪藏文件" | New Paper Processing |
+| 12 | **submission-recommend** | "recommend submission" / "投稿推荐" | Submission Guidance |
+| 13 | **revision-suggest** | "revision suggestions" / "修改建议" | Revision Guidance |
+| 14 | **status** | "vault status" / "查看知识库状态" | Environment Check |
+| 15 | **lint** | "health check" / "错误/冲突与安全检查" | Environment Check |
+| 16 | **pipeline** | "full pipeline" / "执行一条龙全流程" | Composite Pipeline |
+| 17 | **paper-read** | "read this paper" / "单篇文献精读" | Single-Paper Reading |
+| 18 | **direction-review** | "direction review" / "方向综述" | Literature Review Writing |
 
 > **Workflow rule**: unless you explicitly ask for `"full pipeline"`, workflows run independently by default and do not automatically chain themselves. If prerequisites are missing, the agent will tell you what to do first.
 
