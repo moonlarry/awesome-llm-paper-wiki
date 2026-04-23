@@ -103,40 +103,23 @@
 
 ---
 
-## 领域模板生成类
+## 模板系统说明（非独立工作流）
 
-### domain-template — 生成领域模板
+### domain templates — 领域模板
 
-| 自然语言指令 | 说明 |
-|--------------|------|
-| `"Generate domain template for {Direction}"` | 为指定方向生成领域模板 |
-| `"为 {Direction} 方向生成领域模板"` | 同上（中文） |
-| `"Create Battery domain templates"` | 创建 Battery 领域模板 |
+领域模板不是当前 skill 中的独立工作流，也没有默认的 `domain-template` CLI。
+不要把 `"generate domain template"` 计入全量工作流目录。
 
-**最佳时机**：在 **Ingest 之后、Report 生成之前**
+当前实现状态：
+- `templates/generic/` 提供通用模板，作为默认报告结构。
+- `templates/domains/{Direction}/` 可以保存已存在的领域模板。
+- `config.json` 的 `templates.registry` 可以记录模板状态和陈旧度信号。
+- `status` 与 `lint` 会报告领域模板状态或过期提示。
 
-**前置条件**：
-- 至少 `domain_min_papers`（默认 10 篇）论文已入库
-- canonical 页面有 tags 数据（tasks, methods, datasets）
-
-**执行内容**：
-- 分析 `library/papers/{Direction}/` 的 tags 分布
-- 基于 `templates/generic/` 通用模板结构
-- 预填充领域特定内容：
-  - Tasks（研究任务）
-  - Methods（常用方法）
-  - Datasets（常用数据集）
-  - Metrics（评价指标）
-- 保存到 `templates/domains/{Direction}/`
-- 更新 `config.json` → `templates.registry`
-
-**输出**：
-- `templates/domains/{Direction}/journal_report.md`
-- `templates/domains/{Direction}/direction_report.md`
-- `config.json` registry 更新（记录 paper_count, tasks, methods, datasets）
-
-**使用场景**：
-当某个研究方向论文积累足够多时，生成领域模板可提高后续报告的针对性。模板会预填充该方向的常见任务、方法和数据集，减少 Agent 重复分析工作。
+实践规则：
+1. 优先使用 `templates/generic/` 中的通用模板。
+2. 只有当领域模板已经存在且用户明确需要时，才把它作为手动或 Agent 选择的参考结构。
+3. 不要描述或承诺自动生成领域模板，除非后续实现了对应脚本和 workflow。
 
 ---
 
