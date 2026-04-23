@@ -193,6 +193,29 @@
 
 ---
 
+### direction-review — 方向文献综述
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Write a literature review for Battery"` | 为 Battery 方向准备并撰写综述 |
+| `"Battery 方向综述"` | 同上（中文） |
+| `"Direction review for Battery, focus on SOH"` | 限制为 Battery 方向中的 SOH 主题 |
+| `"Deep literature review for Battery"` | 深度综述，目标引用量更高 |
+
+**执行流程**：
+
+1. CLI 运行 `prepare_direction_review.py --direction Battery`
+2. 可选 `--focus "topic"` 聚焦子主题
+3. 生成 `workspace/cache/fulltext-review/{run_key}.json`
+4. Agent 读取 bundle 中所有可读 `records[*].source_path` 全文
+5. 使用 `templates/generic/direction_review.md` 撰写综述
+
+**输出**：
+- `library/reports/review/{direction-or-focus}-review-{date}.md`
+- 包含：研究范围、数据集与评价协议、方法分类、应用场景、部署现状、局限与未来方向
+
+---
+
 ### stat-report — 统计报告
 
 | 自然语言指令 | 说明 |

@@ -1,5 +1,13 @@
 # Schema Reference
 
+## Table of Contents
+
+- [tag_taxonomy.json](#tag_taxonomyjson)
+- [keyword_rules.json](#keyword_rulesjson)
+- [journal_aliases.json](#journal_aliasesjson)
+- [paper_frontmatter.schema.md](#paper_frontmatterschemamd)
+- [Canonical Page Format](#canonical-page-format)
+
 ## tag_taxonomy.json
 
 Defines tag dimensions and known tags.

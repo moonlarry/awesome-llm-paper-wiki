@@ -5,7 +5,14 @@
 ## Coverage / Source Set
 
 <!-- This report must be written after reading the full text of every readable paper selected into the journal-report run bundle. -->
-<!-- Summarize the actual source set used for the report. Do not expand skipped records here. -->
+<!-- Summarize the actual source set used for the report. Separate confirmed, excluded, skipped, and uncertain records. -->
+
+## Paper Coverage Matrix
+
+<!-- Every confirmed included paper must appear here with a numeric citation marker. Do not use this table for excluded, skipped, or uncertain records. -->
+
+| Ref | Year | Paper | Main Task | Method / Evidence Role | Included Reason |
+|-----|------|-------|-----------|------------------------|-----------------|
 
 ## Journal Overview
 

@@ -8,7 +8,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from common import ROOT, load_config, parse_frontmatter, write_json
+from common import ROOT, load_config, parse_frontmatter, validate_journal_aliases, write_json
 from detect_duplicates import collect_source_files, detect_exact_duplicates, detect_probable_duplicates
 from report_support import (
     REQUIRED_CANONICAL_FIELDS,
@@ -172,8 +172,10 @@ def main() -> None:
 
     frontmatter_issues = canonical_frontmatter_issues(config, args.direction)
     template_issues = template_registry_issues(config, canonicals)
+    journal_alias_issues = validate_journal_aliases(config)
 
     findings = {
+        "journal_alias_issues": journal_alias_issues,
         "orphan_canonical": orphan_canonical,
         "missing_canonical": missing_canonical,
         "duplicate_exact": exact_duplicates,
@@ -186,7 +188,7 @@ def main() -> None:
     }
 
     summary = {
-        "error": len(orphan_canonical) + len(broken_source_path) + len(frontmatter_issues),
+        "error": len(journal_alias_issues) + len(orphan_canonical) + len(broken_source_path) + len(frontmatter_issues),
         "warning": len(missing_canonical) + len(exact_duplicates) + len(probable_duplicates) + len(taxonomy_issues) + len(stale_indexes) + len(template_issues),
         "info": 1,
     }
@@ -218,6 +220,7 @@ def main() -> None:
     ]
 
     section_order = [
+        ("Journal Alias Issues", journal_alias_issues, "error"),
         ("Orphan Canonical", orphan_canonical, "error"),
         ("Missing Canonical", missing_canonical, "warning"),
         ("Exact Duplicates", exact_duplicates, "warning"),

@@ -1,7 +1,5 @@
 # 配置指南 (Configuration)
 
-[<- 返回主页](../README.md)
-
 文档库的各项行为均可通过根目录下的 `config.json` 进行配置。
 
 ```json
@@ -10,7 +8,7 @@
   "directions": ["ExampleDirection", "AnotherDirection"],
   "templates": {
     "regeneration_threshold": 0.2,
-    "domain_min_papers": 10
+    "registry": {}
   },
   "web_search": {
     "default_top": 10,
@@ -46,8 +44,8 @@
 |--------|--------|------|
 | `output_lang` | `"zh"` | 输出语言：`"zh"` 中文，`"en"` 英文 |
 | `directions` | `[]` | `paper/` 下的研究方向文件夹名称列表 |
-| `templates.domain_min_papers` | `10` | 触发领域模板生成的最少文献数量 |
 | `templates.regeneration_threshold` | `0.2` | 触发模板更新的文献增长比例 |
+| `templates.registry` | `{}` | 记录领域模板状态和陈旧度信号 |
 | `web_search.default_top` | `10` | 联网检索默认最大保存数量 |
 | `web_search.min_citations` | `5` | OpenAlex 默认最低引用量阈值过滤 |
 | `web_search.openalex_api_key` | `""` | 可选 OpenAlex API key，用于保障正常额度访问 |
@@ -64,11 +62,22 @@
 
 默认提供通用模板（`templates/generic/`），适用于任意研究领域。
 
-当某个领域的论文积累达到阈值（由 `domain_min_papers` 配置，默认为不少于 10 篇文献时），系统会**自动生成领域特定模板**。
+可用通用模板：
+- `paper_canonical.md`
+- `journal_report.md`
+- `direction_report.md`
+- `direction_review.md`
+- `idea_survey_report.md`
+- `paper_reading.md`
+- `stat_report.md`
+- `submission_report.md`
+- `revision_report.md`
 
-例如，针对某个具体研究方向生成的模板可能会预先提取出如下子结构供 LLM 参考：
-- **方法子类**：Model-based、Data-driven、Physics-informed
-- **常见数据集**：NASA、CALCE、Oxford
-- **常见指标**：RMSE、MAE、MAPE
+领域模板位于 `templates/domains/{domain_name}/`。当前代码可以在 `config.json` 中跟踪
+模板 registry 状态，`status_report.py` 和 `lint_vault.py` 会报告 registry 状态和陈旧度信号。
+正式 CLI 路径不会默认自动生成新的领域模板。
 
-Agent 会在 `ingest` (入库阶段) 自动检测领域文献组成，如果满足阈值条件即会提示用户是否需要生成定制领域模板。
+实践规则：
+1. 优先使用 `templates/generic/` 中的通用模板。
+2. 只有当领域模板已存在且用户明确需要时，才把它作为手动或 Agent 选择的参考结构。
+3. 不要把领域模板自动生成描述为当前默认实现。

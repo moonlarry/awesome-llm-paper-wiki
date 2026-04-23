@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from common import ROOT, direction_paths, ensure_dir, load_config, rel, resolve_journal, write_json
+from common import ROOT, direction_paths, ensure_dir, load_config, rel, resolve_journal, validate_journal_aliases, write_json
 
 
 def build_plan(config: dict, direction_filter: str | None, fix_misplaced: bool) -> list[dict]:
@@ -99,6 +99,13 @@ def main() -> None:
         raise SystemExit("Choose --all or --direction <name>.")
 
     config = load_config(ROOT / args.config)
+    alias_issues = validate_journal_aliases(config)
+    if alias_issues:
+        print("Journal alias collision detected. Fix schema/journal_aliases.json before organizing.", file=sys.stderr)
+        for issue in alias_issues:
+            print(f"- {issue['abbr']}: {', '.join(issue['aliases'])}", file=sys.stderr)
+        raise SystemExit(2)
+
     plan = build_plan(config, None if args.all else args.direction, args.fix_misplaced)
     plan_path = ROOT / config["paths"]["manifests"] / "journal_move_plan.json"
     write_json(plan_path, plan)
