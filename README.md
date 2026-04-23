@@ -91,12 +91,14 @@ bash install.sh --platform codex
 “Ingest papers”       → 生成 canonical 页面、提取元数据并打标签（Agent 会自动阅读并提取标签）
 ```
 
-#### 第三步半：生成领域模板（可选，入库后执行）
+#### 第三步半：领域模板状态（可选说明）
 
-当某个研究方向论文积累足够多（≥10 篇）时，可生成领域模板提高报告针对性：
+当前版本没有独立的 `domain-template` 工作流或默认自动生成命令。领域模板作为模板系统资源使用：
 
 ```
-“Generate domain template for {Direction}”  → 为指定方向生成领域模板
+templates/generic/                 → 默认通用模板
+templates/domains/{Direction}/      → 已存在时可作为领域模板参考
+status / lint                       → 查看模板 registry 状态和陈旧度提示
 ```
 
 #### 第四步：生成综述或投稿建议（当涉及多篇文献时，建议把Agent推理能力拉到最大）
@@ -107,14 +109,14 @@ bash install.sh --platform codex
 “Read this paper: {path}”             → 单篇文献精读
 “Journal report for {journal}”        → 期刊调研报告
 “Direction report for {topic}”        → 方向调研报告
-“Write report for {topic}”            → 撰写文献综述（普通模式约引用 40-80 篇，深度模式约引用 80-160 篇）
+“Write a literature review for {topic}” → 撰写文献综述（普通模式约引用 40-80 篇，深度模式约引用 80-120 篇）
 “Recommend submission”                → 投稿推荐（需有本地论文草稿）
 “Revision suggestions for {journal}” → 针对特刊的修改建议
 ```
 
 ## 🛠️ 全量工作流目录
 
-`awesome-llm-paper-wiki` 的系统技能集总共内置了 19 大工作流，**各自都可以受指令独立触发并运行。**
+`awesome-llm-paper-wiki` 的系统技能集总共内置了 18 大工作流，**各自都可以受指令独立触发并运行。**
 
 | 序号 | 触发工作流 | 对话触发词示例 (中/英皆可理解) | 核心板块 |
 |---|--------|----------|------|
@@ -122,21 +124,20 @@ bash install.sh --platform codex
 | 2 | **scan-organize** | "scan papers" / "整理期刊" | 定向预处理 |
 | 3 | **ingest** | "ingest papers" / "文档入库" | 定向预处理 |
 | 4 | **tag** | "assign tags" / "分配打分与标签" | 定向预处理 |
-| 5 | **domain-template** | "generate domain template" / "生成领域模板" | 领域模板生成 |
-| 6 | **journal-report** | "XXX journal report" / "XXX 期刊报告" | 期刊调研报告 |
-| 7 | **direction-report** | "TSF report" / "time series forecasting 方向报告" | 方向调研报告 |
-| 8 | **stat-report** | "method stats" / "论文使用方法统计" | 论文方法等调研报告 |
-| 9 | **idea-survey** | "idea survey" / "Idea 新颖性调研"| Idea锐评 |
-| 10 | **web-find** | "web find" / "联网检索论文" | 网络检索 |
-| 11 | **web-digest** | "daily digest" / "近期 arXiv 精选" | 网络检索推荐 |
-| 12 | **web-import-clipper**| "import web clipper" / "导入剪藏文件" | 新文献处理 |
-| 13 | **submission-recommend**| "recommend submission" / "投稿推荐" | 投稿推荐 |
-| 14 | **revision-suggest** | "revision suggestions" / "修改建议" | 论文修改建议 |
-| 15 | **status** | "vault status" / "查看知识库状态" | Agent 环境检查 |
-| 16 | **lint** | "health check" / "错误/冲突与安全检查"| Agent 环境检查 |
-| 17 | **pipeline** | "full pipeline" / "执行一条龙全流程" | 复合全链路执行 |
-| 18 | **paper-read** | "read this paper" / "单篇文献精读" | 单篇论文理解 |
-| 19 | **direction-review** | "direction review" / "方向综述" | 文献综述写作 |
+| 5 | **journal-report** | "XXX journal report" / "XXX 期刊报告" | 期刊调研报告 |
+| 6 | **direction-report** | "TSF report" / "time series forecasting 方向报告" | 方向调研报告 |
+| 7 | **stat-report** | "method stats" / "论文使用方法统计" | 论文方法等调研报告 |
+| 8 | **idea-survey** | "idea survey" / "Idea 新颖性调研"| Idea锐评 |
+| 9 | **web-find** | "web find" / "联网检索论文" | 网络检索 |
+| 10 | **web-digest** | "daily digest" / "近期 arXiv 精选" | 网络检索推荐 |
+| 11 | **web-import-clipper**| "import web clipper" / "导入剪藏文件" | 新文献处理 |
+| 12 | **submission-recommend**| "recommend submission" / "投稿推荐" | 投稿推荐 |
+| 13 | **revision-suggest** | "revision suggestions" / "修改建议" | 论文修改建议 |
+| 14 | **status** | "vault status" / "查看知识库状态" | Agent 环境检查 |
+| 15 | **lint** | "health check" / "错误/冲突与安全检查"| Agent 环境检查 |
+| 16 | **pipeline** | "full pipeline" / "执行一条龙全流程" | 复合全链路执行 |
+| 17 | **paper-read** | "read this paper" / "单篇文献精读" | 单篇论文理解 |
+| 18 | **direction-review** | "direction review" / "方向综述" | 文献综述写作 |
 
 > **工作流调用原则**：除非你明确要求执行 `"full pipeline"`，否则各工作流默认独立运行，不会自动串联。若前置条件缺失，Agent 会主动提示你先补齐必要步骤。
 
