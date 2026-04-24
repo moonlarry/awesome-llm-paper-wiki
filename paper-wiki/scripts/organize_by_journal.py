@@ -38,6 +38,14 @@ def build_plan(config: dict, direction_filter: str | None, fix_misplaced: bool) 
                 reason = "target already exists"
 
             plan.append({**record, "action": action, "reason": reason})
+    move_targets: dict[str, int] = {}
+    for item in plan:
+        if item["action"] == "move":
+            move_targets[item["target_path"]] = move_targets.get(item["target_path"], 0) + 1
+    for item in plan:
+        if item["action"] == "move" and move_targets.get(item["target_path"], 0) > 1:
+            item["action"] = "conflict"
+            item["reason"] = "target duplicated in move plan"
     return plan
 
 

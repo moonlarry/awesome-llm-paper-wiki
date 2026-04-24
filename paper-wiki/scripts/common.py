@@ -796,7 +796,9 @@ def abbr_from_journal_name(name: str) -> str:
 def find_alias_in_text(text: str, aliases: dict[str, str]) -> tuple[str | None, str | None]:
     norm_text = normalize_key(text)
     for alias_key, abbr in sorted(aliases.items(), key=lambda item: len(item[0]), reverse=True):
-        if alias_key and alias_key in norm_text:
+        if not alias_key or " " not in alias_key:
+            continue
+        if re.search(rf"\b{re.escape(alias_key)}\b", norm_text):
             return alias_key, abbr
     return None, None
 
@@ -893,12 +895,6 @@ def resolve_journal(md_path: Path, config: dict[str, Any]) -> dict[str, Any]:
             source_field = "frontmatter.published.initials"
             confidence = "medium"
 
-    if not abbr and parent_folder and parent_folder in known_dirs:
-        abbr = parent_folder
-        journal = parent_folder
-        source_field = "parent_folder"
-        confidence = "medium"
-
     if not abbr:
         alias_name, alias_abbr = find_alias_in_text(text[:80_000], aliases)
         if alias_abbr:
@@ -957,3 +953,260 @@ def write_json(path: Path, data: Any) -> None:
 
 def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+# Provider rate limiting state
+_PROVIDER_NEXT_ALLOWED_AT: dict[str, float] = {}
+
+
+def provider_min_interval(provider: str, config: dict[str, Any]) -> float:
+    """Return minimum seconds between requests for a provider."""
+    email = str(config.get("web_search", {}).get("contact_email") or "").strip()
+    if provider == "crossref":
+        return 0.35 if email else 1.1
+    if provider == "openalex":
+        return 1.1
+    return 1.1
+
+
+def provider_headers(provider: str, config: dict[str, Any]) -> dict[str, str]:
+    """Build request headers with contact email."""
+    email = str(config.get("web_search", {}).get("contact_email") or "").strip()
+    user_agent = "paper-llm-wiki/1.0"
+    if email:
+        user_agent = f"paper-llm-wiki/1.0 (mailto:{email})"
+    return {"User-Agent": user_agent}
+
+
+def add_provider_contact(provider: str, url: str, config: dict[str, Any]) -> str:
+    """Add contact email to URL query parameters."""
+    import urllib.parse
+    email = str(config.get("web_search", {}).get("contact_email") or "").strip()
+    if not email:
+        return url
+    parsed = urllib.parse.urlparse(url)
+    query = dict(urllib.parse.parse_qsl(parsed.query, keep_blank_values=True))
+    if provider in {"crossref", "openalex"} and "mailto" not in query:
+        query["mailto"] = email
+    return urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query)))
+
+
+def retry_after_seconds(value: str | None) -> float | None:
+    """Parse Retry-After header value."""
+    from email.utils import parsedate_to_datetime
+    if not value:
+        return None
+    value = value.strip()
+    if value.isdigit():
+        return float(value)
+    try:
+        retry_at = parsedate_to_datetime(value)
+        return max(0.0, retry_at.timestamp() - time.time())
+    except (TypeError, ValueError):
+        return None
+
+
+def wait_for_provider(provider: str, min_interval: float) -> None:
+    """Wait until provider is ready for next request."""
+    now = time.time()
+    next_allowed = _PROVIDER_NEXT_ALLOWED_AT.get(provider, 0.0)
+    if now < next_allowed:
+        time.sleep(next_allowed - now)
+    _PROVIDER_NEXT_ALLOWED_AT[provider] = time.time() + min_interval
+
+
+def rate_limited_json_request(
+    provider: str,
+    url: str,
+    config: dict[str, Any],
+    timeout: int = 30,
+    max_attempts: int = 3,
+) -> dict[str, Any]:
+    """Make rate-limited JSON request with retry logic."""
+    import urllib.parse
+    import urllib.request
+    min_interval = provider_min_interval(provider, config)
+    url = add_provider_contact(provider, url, config)
+    headers = provider_headers(provider, config)
+    backoff = 2.0
+
+    for attempt in range(1, max_attempts + 1):
+        wait_for_provider(provider, min_interval)
+        request = urllib.request.Request(url, headers=headers)
+
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                raw = response.read()
+                return json.loads(raw.decode("utf-8"))
+
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                delay = retry_after_seconds(exc.headers.get("Retry-After")) or backoff
+                if attempt == max_attempts:
+                    raise
+                time.sleep(delay)
+                backoff = min(backoff * 2, 30.0)
+                continue
+
+            if exc.code in {500, 502, 503, 504}:
+                if attempt == max_attempts:
+                    raise
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 30.0)
+                continue
+
+            raise
+
+        except urllib.error.URLError:
+            if attempt == max_attempts:
+                raise
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 30.0)
+
+    raise RuntimeError("unreachable")
+
+
+def normalize_title_for_match(title: str) -> str:
+    """Normalize title for matching: lowercase, remove punctuation, normalize whitespace."""
+    normalized = title.lower()
+    normalized = re.sub(r'[^\w\s]', ' ', normalized)
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    return normalized
+
+
+def is_missing_journal(record: dict[str, Any]) -> bool:
+    """Check if a record has missing/unreliable journal metadata."""
+    journal_abbr = record.get("journal_abbr") or ""
+    journal = record.get("journal") or ""
+    journal_source = record.get("journal_source") or ""
+    journal_confidence = record.get("journal_confidence") or ""
+
+    if not journal_abbr or journal_abbr == "UnknownJournal":
+        return True
+    if not journal or journal == "UnknownJournal":
+        return True
+    if journal_source == "unknown":
+        return True
+    if journal_confidence == "low":
+        return True
+    if journal_abbr == "IEEE" and not journal:
+        return True
+    if journal == "IEEE" and journal_abbr == "IEEE":
+        return True
+    return False
+
+
+def rate_limited_bytes_request(
+    provider: str,
+    url: str,
+    config: dict[str, Any],
+    headers: dict[str, str] | None = None,
+    timeout: int = 30,
+    max_attempts: int = 3,
+) -> bytes:
+    """Make rate-limited bytes request with retry logic."""
+    import urllib.request
+    min_interval = provider_min_interval(provider, config)
+    url = add_provider_contact(provider, url, config)
+    base_headers = provider_headers(provider, config)
+    if headers:
+        base_headers.update(headers)
+    backoff = 2.0
+
+    for attempt in range(1, max_attempts + 1):
+        wait_for_provider(provider, min_interval)
+        request = urllib.request.Request(url, headers=base_headers)
+
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return response.read()
+
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                delay = retry_after_seconds(exc.headers.get("Retry-After")) or backoff
+                if attempt == max_attempts:
+                    raise
+                time.sleep(delay)
+                backoff = min(backoff * 2, 30.0)
+                continue
+
+            if exc.code in {500, 502, 503, 504}:
+                if attempt == max_attempts:
+                    raise
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 30.0)
+                continue
+
+            raise
+
+        except urllib.error.URLError:
+            if attempt == max_attempts:
+                raise
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 30.0)
+
+    raise RuntimeError("unreachable")
+
+
+def lookup_crossref_by_title(title: str, config: dict[str, Any]) -> dict[str, Any] | None:
+    """Query Crossref API by title."""
+    import urllib.parse
+    query = urllib.parse.urlencode({"query.title": title, "rows": "5"})
+    url = f"https://api.crossref.org/works?{query}"
+
+    try:
+        data = rate_limited_json_request("crossref", url, config)
+        items = data.get("message", {}).get("items", [])
+        local_normalized = normalize_title_for_match(title)
+
+        for item in items:
+            candidate_title = item.get("title", [None])[0] or ""
+            if normalize_title_for_match(candidate_title) == local_normalized:
+                return {
+                    "title": candidate_title,
+                    "journal": item.get("container-title", [None])[0] or "",
+                    "doi": item.get("DOI", ""),
+                    "published_year": item.get("published-print", {}).get("date-parts", [[None]])[0][0]
+                    if item.get("published-print")
+                    else item.get("published-online", {}).get("date-parts", [[None]])[0][0]
+                    if item.get("published-online")
+                    else None,
+                    "provider": "crossref",
+                }
+        return None
+    except Exception:
+        return None
+
+
+def lookup_openalex_by_title(title: str, config: dict[str, Any]) -> dict[str, Any] | None:
+    """Query OpenAlex API by title."""
+    import urllib.parse
+    query = urllib.parse.urlencode({"filter": f"title.search:{title}", "per-page": "5"})
+    url = f"https://api.openalex.org/works?{query}"
+
+    try:
+        data = rate_limited_json_request("openalex", url, config)
+        results = data.get("results", [])
+        local_normalized = normalize_title_for_match(title)
+
+        for result in results:
+            candidate_title = result.get("title") or ""
+            if normalize_title_for_match(candidate_title) == local_normalized:
+                primary_location = result.get("primary_location") or {}
+                source = primary_location.get("source") or {}
+                journal = source.get("display_name") or ""
+                if not journal:
+                    host_venue = result.get("host_venue") or {}
+                    journal = host_venue.get("display_name") or ""
+                if not journal:
+                    return None
+                return {
+                    "title": candidate_title,
+                    "journal": journal,
+                    "doi": result.get("doi") or "",
+                    "published_year": result.get("publication_year"),
+                    "provider": "openalex",
+                }
+        return None
+    except Exception:
+        return None
