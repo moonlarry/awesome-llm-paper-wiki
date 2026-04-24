@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import sys
 from datetime import datetime
@@ -12,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 from common import (
     ROOT,
     append_log,
-    apply_keyword_rules_to_canonical,
     clean_author_name,
     ensure_dir,
     existing_identities,
@@ -20,15 +20,11 @@ from common import (
     extract_heading_section,
     extract_year,
     first_author_key,
-    generate_canonical,
-    journal_abbr_from_name,
     load_config,
-    load_keyword_rules,
     normalize_identity,
     parse_frontmatter,
     paper_root,
     rel,
-    rebuild_indexes,
     slugify,
     validate_direction,
     write_json,
@@ -59,7 +55,12 @@ def infer_metadata(path: Path, text: str) -> dict[str, Any]:
     source = str(fm.get("source") or fm.get("url") or "").strip()
     doi = str(fm.get("doi") or extract_doi(text) or "").strip()
     year = fm.get("published_year") or fm.get("year") or extract_year(text) or ""
-    journal = str(fm.get("published") or fm.get("journal") or fm.get("site") or "UnknownJournal").strip()
+
+    journal = str(fm.get("published") or fm.get("journal") or fm.get("site") or "").strip()
+
+    if not journal:
+        journal = ""
+
     authors = frontmatter_list(fm.get("authors") or fm.get("author"))
     abstract = extract_heading_section(text, "Abstract")
     return {
@@ -79,7 +80,7 @@ def identity(meta: dict[str, Any]) -> str:
     return f"title:{normalize_identity(meta['title'])}:{meta['year']}"
 
 
-def normalize_clipped_markdown(text: str, meta: dict[str, Any], direction: str, journal_abbr: str) -> str:
+def normalize_clipped_markdown(text: str, meta: dict[str, Any], direction: str) -> str:
     body = text
     if body.startswith("---"):
         parts = body.split("---", 2)
@@ -95,16 +96,18 @@ def normalize_clipped_markdown(text: str, meta: dict[str, Any], direction: str, 
             f"title: {yaml_quote(meta['title'])}",
             "authors:",
             yaml_list(meta["authors"]),
-            f"published: {yaml_quote(meta['journal'])}",
+            f"published: {yaml_quote(meta['journal'] if meta['journal'] else '')}",
             f"published_year: {yaml_int_or_null(meta['year'])}",
             f"doi: {yaml_quote(meta['doi'])}",
             f"source: {yaml_quote(meta['source'])}",
             'web_source: "clipper"',
             'citation_count: ""',
             f"direction: {yaml_quote(direction)}",
-            f"journal_abbr: {yaml_quote(journal_abbr)}",
+            'journal_abbr: ""',
+            'journal: ""',
             'source_type: "clipped"',
             'import_status: "clipper-imported"',
+            'needs_enrichment: true',
             f"created_at: {yaml_quote(datetime.now().isoformat(timespec='seconds'))}",
             "---",
             "",
@@ -120,17 +123,15 @@ def normalize_clipped_markdown(text: str, meta: dict[str, Any], direction: str, 
 def import_file(path: Path, direction: str, config: dict[str, Any], dry_run: bool) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8", errors="replace")
     meta = infer_metadata(path, text)
-    journal_abbr = journal_abbr_from_name(meta["journal"], config)
     filename = f"{meta['year'] or 'unknown'}-{first_author_key(meta['authors'])}-{slugify(meta['title'])}.md"
-    target = paper_root(config) / direction / journal_abbr / filename
+    target = paper_root(config) / direction / "UnknownJournal" / filename
     record = {"source": rel(path), "target": rel(target), "title": meta["title"], "identity": identity(meta), "status": "dry-run" if dry_run else "created"}
     if target.exists():
         record["status"] = "skipped_existing"
         return record
     if not dry_run:
         ensure_dir(target.parent)
-        target.write_text(normalize_clipped_markdown(text, meta, direction, journal_abbr), encoding="utf-8")
-        generate_canonical(target, config)
+        target.write_text(normalize_clipped_markdown(text, meta, direction), encoding="utf-8")
     return record
 
 
@@ -178,17 +179,7 @@ def main() -> None:
     manifest_path = ROOT / config["paths"]["manifests"] / "web_clipper_import.json"
     if not args.dry_run:
         write_json(manifest_path, {"direction": args.direction, "inbox": rel(inbox), "dry_run": args.dry_run, "created": created, "skipped_existing": skipped})
-        rules = load_keyword_rules(config)
-        tag_updates = 0
-        for record in created:
-            if record.get("status") == "created":
-                target_path = ROOT / record["target"]
-                if target_path.exists():
-                    updates = apply_keyword_rules_to_canonical(target_path, rules, dry_run=False)
-                    tag_updates += len(updates)
-        rebuild_indexes()
-        append_log(f"- {datetime.now().isoformat(timespec='seconds')} clipper {args.direction}: created={len(created)} skipped={len(skipped)} tags={tag_updates} dry_run={args.dry_run}", config)
-        print(f"Tag updates: {tag_updates}")
+        append_log(f"- {datetime.now().isoformat(timespec='seconds')} clipper {args.direction}: created={len(created)} skipped={len(skipped)} dry_run={args.dry_run}", config)
     print(f"Clipper import: created {len(created)}; skipped {len(skipped)}.")
     if args.dry_run:
         print("Dry run: no files were written.")
