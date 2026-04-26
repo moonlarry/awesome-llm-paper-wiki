@@ -23,6 +23,7 @@ from report_support import (
     report_slug,
     select_direction_fulltext_records,
     select_journal_fulltext_records,
+    source_reading_policy,
     today_stamp,
     top_ranked,
     year_counts,
@@ -56,6 +57,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--metadata-only", action="store_true")
+    parser.add_argument("--complete", action="store_true")
+    parser.add_argument("--include-references", action="store_true")
     args = parser.parse_args()
 
     if args.mode == "journal" and not args.journal:
@@ -69,6 +72,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--web is only supported with --metadata-only in --mode direction")
     if args.mode == "direction" and args.web and not args.direction:
         parser.error("--web requires --direction")
+    if args.complete and args.mode == "stat":
+        parser.error("--complete is only supported for --mode journal or --mode direction")
+    if args.complete and args.metadata_only:
+        parser.error("--complete cannot be combined with --metadata-only")
     return args
 
 
@@ -386,6 +393,7 @@ def prepare_journal_fulltext_run(config: dict[str, Any], args: argparse.Namespac
         cache_path=cache_path,
         readable_records=readable_records,
         skipped_records=skipped_records,
+        source_reading=source_reading_policy(config, args),
     )
     return bundle, build_compact_prep_notes(bundle)
 
@@ -406,6 +414,7 @@ def prepare_direction_fulltext_run(config: dict[str, Any], args: argparse.Namesp
         cache_path=cache_path,
         readable_records=readable_records,
         skipped_records=skipped_records,
+        source_reading=source_reading_policy(config, args),
     )
     return bundle, build_compact_prep_notes(bundle)
 
@@ -417,6 +426,16 @@ def print_fulltext_dry_run(bundle: dict[str, Any]) -> None:
     print(f"skipped={bundle['skipped_count']}")
     print(f"output={bundle['output_path']}")
     print(f"cache={bundle['cache_path']}")
+
+
+def complete_fulltext_run(config: dict[str, Any], args: argparse.Namespace, output_path: Path) -> tuple[Path, dict[str, Any]]:
+    cache_path = report_cache_path(config, args.mode, args.journal, args.direction, args.query)
+    if not cache_path.exists():
+        raise SystemExit(f"Run bundle not found: {rel(cache_path)}")
+    if not output_path.exists():
+        raise SystemExit(f"Final report not found: {rel(output_path)}")
+    bundle = load_json(cache_path)
+    return cache_path, bundle
 
 
 def build_stat_report(config: dict[str, Any], args: argparse.Namespace) -> tuple[list[str], list[str]]:
@@ -519,6 +538,27 @@ def main() -> None:
     output_path = default_output_path(config, args)
 
     if args.mode == "journal" and not args.metadata_only:
+        if args.complete:
+            cache_path, bundle = complete_fulltext_run(config, args, output_path)
+            if args.dry_run:
+                print("Dry run: completion log would be written.")
+                print(f"output={rel(output_path)}")
+                print(f"cache={rel(cache_path)}")
+                print(f"read={bundle['readable_count']}")
+                print(f"skipped={bundle['skipped_count']}")
+                return
+            append_compact_report_log(
+                config,
+                "journal-report",
+                "completed",
+                report_target(args),
+                output_path,
+                cache_path,
+                bundle["readable_count"],
+                [entry["ref_id"] for entry in bundle["skipped"]],
+            )
+            print(f"Completed {rel(output_path)}")
+            return
         bundle, _ = prepare_journal_fulltext_run(config, args, output_path)
         cache_path = ROOT / bundle["cache_path"]
         if args.dry_run:
@@ -539,6 +579,27 @@ def main() -> None:
         return
 
     if args.mode == "direction" and not args.metadata_only:
+        if args.complete:
+            cache_path, bundle = complete_fulltext_run(config, args, output_path)
+            if args.dry_run:
+                print("Dry run: completion log would be written.")
+                print(f"output={rel(output_path)}")
+                print(f"cache={rel(cache_path)}")
+                print(f"read={bundle['readable_count']}")
+                print(f"skipped={bundle['skipped_count']}")
+                return
+            append_compact_report_log(
+                config,
+                "direction-report",
+                "completed",
+                report_target(args),
+                output_path,
+                cache_path,
+                bundle["readable_count"],
+                [entry["ref_id"] for entry in bundle["skipped"]],
+            )
+            print(f"Completed {rel(output_path)}")
+            return
         bundle, _ = prepare_direction_fulltext_run(config, args, output_path)
         cache_path = ROOT / bundle["cache_path"]
         if args.dry_run:

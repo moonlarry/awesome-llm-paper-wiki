@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import ssl
 import subprocess
 import sys
 import time
@@ -20,6 +22,48 @@ STOPWORDS = {"of", "and", "&", "the", "for", "in", "on", "a", "an"}
 UNKNOWN_JOURNAL = "UnknownJournal"
 
 _last_arxiv_request_time: float = 0.0
+
+
+def _allow_insecure_ssl(config: dict[str, Any] | None = None) -> bool:
+    """Check if insecure SSL fallback is explicitly enabled."""
+    env_enabled = os.environ.get("PAPER_WIKI_ALLOW_INSECURE_SSL", "").strip().lower()
+    if env_enabled in ("1", "true", "yes", "on"):
+        return True
+    if config:
+        cfg_enabled = config.get("web_search", {}).get("allow_insecure_ssl_fallback", False)
+        return bool(cfg_enabled)
+    return False
+
+
+def _urlopen(request: urllib.request.Request, timeout: int = 30, config: dict[str, Any] | None = None) -> Any:
+    """urlopen wrapper with SSL certificate fallback logic.
+
+    Default: use Python's trust store.
+    On cert failure: try certifi if installed.
+    Insecure SSL: only when explicitly enabled via config or env.
+    """
+    try:
+        return urllib.request.urlopen(request, timeout=timeout)
+    except urllib.error.URLError as exc:
+        reason = getattr(exc.reason, "__class__", None)
+        if reason is not ssl.SSLCertVerificationError:
+            raise
+        certifi_path = None
+        try:
+            import certifi
+            certifi_path = certifi.where()
+        except ImportError:
+            pass
+        if certifi_path:
+            try:
+                ctx = ssl.create_default_context(cafile=certifi_path)
+                return urllib.request.urlopen(request, timeout=timeout, context=ctx)
+            except urllib.error.URLError:
+                pass
+        if _allow_insecure_ssl(config):
+            ctx = ssl._create_unverified_context()
+            return urllib.request.urlopen(request, timeout=timeout, context=ctx)
+        raise
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
@@ -41,10 +85,11 @@ def ensure_dir(path: Path) -> None:
 def http_bytes(url: str, headers: dict[str, str] | None = None, timeout: int = 30) -> bytes:
     headers = headers or {}
     waits = [2, 5, 10]
+    config = load_config()
     for attempt in range(len(waits) + 1):
         request = urllib.request.Request(url, headers={"User-Agent": "paper-llm-wiki/1.0", **headers})
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
+            with _urlopen(request, timeout=timeout, config=config) as response:
                 return response.read()
         except urllib.error.HTTPError as exc:
             if exc.code != 429 or attempt == len(waits):
@@ -65,26 +110,70 @@ def http_json(url: str, headers: dict[str, str] | None = None, timeout: int = 30
 
 
 def http_bytes_arxiv(url: str, timeout: int = 30) -> bytes:
-    """Fetch from arXiv API with strict rate limiting (3 seconds between requests)."""
+    """Fetch from arXiv API with strict rate limiting (3 seconds between requests).
+
+    Retry logic:
+    - 429, 5xx, URLError, TimeoutError: retry with backoff
+    - 403 only when Retry-After is present
+    - 400, 401, 403 (no Retry-After), 404: fail fast
+    """
     global _last_arxiv_request_time
-    elapsed = time.time() - _last_arxiv_request_time
-    if elapsed < 3.0:
-        time.sleep(3.0 - elapsed)
     config = load_config()
-    email = config.get("web_search", {}).get("openalex_email", "")
+    email = str(config.get("web_search", {}).get("contact_email") or "").strip()
+    if not email:
+        email = str(config.get("web_search", {}).get("openalex_email") or "").strip()
     user_agent = "paper-llm-wiki/1.0"
     if email:
         user_agent = f"paper-llm-wiki/1.0 (contact: {email})"
-    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+    waits = [5, 15, 30]
+
+    for attempt in range(len(waits) + 1):
+        elapsed = time.time() - _last_arxiv_request_time
+        if elapsed < 3.0:
+            time.sleep(3.0 - elapsed)
+        request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+        try:
+            with _urlopen(request, timeout=timeout, config=config) as response:
+                _last_arxiv_request_time = time.time()
+                return response.read()
+        except urllib.error.HTTPError as exc:
             _last_arxiv_request_time = time.time()
-            return response.read()
-    except urllib.error.HTTPError as exc:
-        _last_arxiv_request_time = time.time()
-        if exc.code == 403:
-            raise RuntimeError(f"arXiv API rate limit exceeded (403). Wait before retrying.") from exc
-        raise
+            code = exc.code
+            retry_after_raw = exc.headers.get("Retry-After")
+            retry_after = retry_after_seconds(retry_after_raw) or 0.0
+            if code == 429:
+                if attempt == len(waits):
+                    raise
+                delay = retry_after if retry_after > 0 else waits[attempt]
+                time.sleep(delay)
+                continue
+            if code in {500, 502, 503, 504}:
+                if attempt == len(waits):
+                    raise
+                delay = retry_after if retry_after > 0 else waits[attempt]
+                time.sleep(delay)
+                continue
+            if code == 403:
+                if retry_after_raw and retry_after > 0:
+                    if attempt == len(waits):
+                        raise RuntimeError(f"arXiv API rate limit exceeded (403). Retry-After: {retry_after_raw}") from exc
+                    time.sleep(retry_after)
+                    continue
+                raise RuntimeError(f"arXiv API forbidden (403) without Retry-After. Check request validity.") from exc
+            raise
+        except urllib.error.URLError as exc:
+            _last_arxiv_request_time = time.time()
+            if attempt == len(waits):
+                raise
+            time.sleep(waits[attempt])
+            continue
+        except TimeoutError:
+            _last_arxiv_request_time = time.time()
+            if attempt == len(waits):
+                raise
+            time.sleep(waits[attempt])
+            continue
+    raise RuntimeError("unreachable")
 
 
 def read_text(path: Path, limit: int | None = None) -> str:
