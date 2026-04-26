@@ -60,6 +60,31 @@ STOPWORDS = {
     "with",
 }
 
+DEFAULT_REFERENCE_SECTION_HEADINGS = [
+    "references",
+    "reference",
+    "bibliography",
+    "works cited",
+    "literature cited",
+    "references and notes",
+]
+
+
+def source_reading_policy(config: dict[str, Any], args: Any | None = None) -> dict[str, Any]:
+    include = bool(config.get("report_generation", {}).get("include_reference_sections", False))
+    if args is not None and getattr(args, "include_references", False):
+        include = True
+    return {
+        "include_reference_sections": include,
+        "reference_section_headings": DEFAULT_REFERENCE_SECTION_HEADINGS,
+        "default_behavior": "include_reference_sections" if include else "skip_reference_sections",
+        "instruction": (
+            "When reading records[*].source_path for report writing, read the full Markdown including References."
+            if include
+            else "When reading records[*].source_path for report writing, ignore References/Bibliography sections from source papers."
+        ),
+    }
+
 
 def today_stamp() -> str:
     return datetime.now().strftime("%Y-%m-%d")
@@ -279,6 +304,7 @@ def build_fulltext_run_bundle(
     cache_path: Path,
     readable_records: list[dict[str, Any]],
     skipped_records: list[dict[str, Any]],
+    source_reading: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "workflow": workflow,
@@ -289,6 +315,7 @@ def build_fulltext_run_bundle(
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "output_path": rel(output_path),
         "cache_path": rel(cache_path),
+        "source_reading": source_reading or {},
         "selected_count": len(readable_records) + len(skipped_records),
         "readable_count": len(readable_records),
         "skipped_count": len(skipped_records),

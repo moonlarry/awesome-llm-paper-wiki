@@ -58,6 +58,12 @@
 | `web_search.arxiv_fulltext_priority` | `["html","tex","pdf","api"]` | arXiv 全文获取优先级 |
 | `web_search.domain_profiles` | `{}` | 方向级领域匹配规则。建议只保留通用字段结构，并按你自己的研究方向填写关键词组、负向词和偏好期刊。 |
 
+## 报告生成 (Report Generation)
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `report_generation.include_reference_sections` | `false` | 控制 Agent 读取 `records[*].source_path` 时是否包含源论文 References/Bibliography 段。默认跳过；可通过 `--include-references` CLI 参数临时启用。 |
+
 ## 模板系统 (Template System)
 
 默认提供通用模板（`templates/generic/`），适用于任意研究领域。

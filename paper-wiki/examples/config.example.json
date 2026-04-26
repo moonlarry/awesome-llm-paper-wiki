@@ -8,6 +8,7 @@
     "papers": "library/papers",
     "reports": "library/reports",
     "indexes": "library/indexes",
+    "links": "library/links",
     "manifests": "workspace/manifests",
     "logs": "workspace/logs"
   },
@@ -35,9 +36,14 @@
     "domain_min_papers": 10,
     "registry": {}
   },
+  "report_generation": {
+    "include_reference_sections": false
+  },
   "web_search": {
     "default_top": 10,
     "min_citations": 5,
+    "contact_email": "",
+    "allow_insecure_ssl_fallback": false,
     "openalex_email": "",
     "openalex_api_key": "",
     "semantic_scholar_api_key": "",

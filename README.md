@@ -16,7 +16,7 @@ awesome-llm-paper-wiki 管理一个本地 Markdown 文献库，并让你的 LLM 
 | **全维度标签管理** | 支持研究任务、底层方法、数据集、测试指标等多维复杂标签自动分析 |
 | **自动化综述报告** | 基于已有文献，自动生成期刊报告、方向报告、统计报告，并撰写文献综述 |
 | **单篇文献精读** | 按固定问题模板阅读单篇论文，回答问题、重要性、方法机制、核心结论和下一步工作 |
-| **联网搜索接入** | 原生对接 OpenAlex / Semantic Scholar / arXiv，自动检索论文并尝试存入本地源文件（需在 config.json 配置 API key） |
+| **联网搜索接入** | 原生对接 OpenAlex / Semantic Scholar / arXiv，自动检索论文并尝试存入本地源文件（需在 config.json 配置 API key），基于arxiv会议论文清单实现批量下载 |
 | **学术投稿向导建议** | 基于项目内的本地知识网络库进行 6 维评分，并生成期刊投稿的修改建议 |
 
 ## 💡 为什么要做这个项目？
@@ -67,10 +67,11 @@ bash install.sh --platform codex
 **获取方式**：
 
 - **期刊论文**：打开期刊论文页面，使用 `Obsidian Web Clipper` 插件保存全文。建议优先保留英文原文；也可以借助“沉浸式翻译”等插件，保存为中英混合或纯中文 Markdown。
-- **会议论文**：通过 arXiv 搜索论文，点击论文右侧的 `Access Paper`，选择 `HTML (experimental)`，再使用 `Obsidian Web Clipper` 插件保存全文。
+- **会议论文**：通过 arXiv 搜索论文，点击论文右侧的 `Access Paper`，选择 `HTML (experimental)`，再使用 `Obsidian Web Clipper` 插件保存全文。**如果你有一份会议论文清单(github上有很多，可以搜一下)，直接丢给skills，能实现批量下载！**
 - **相关说明**：图片、公式通常可以完整保存；表格多以 HTML 形式保存，项目脚本会将其转换为更适配 Markdown 的表格格式。
 
 **存放位置**：
+
 - 创建研究方向目录：`paper/{Direction}/`（如 `paper/TimeSeries/`）
 - 将对应的文献 Markdown 文件放入对应方向目录下即可
 

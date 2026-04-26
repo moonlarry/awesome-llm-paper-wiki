@@ -18,6 +18,7 @@ from report_support import (
     paper_rank_key,
     partition_records_by_source,
     report_slug,
+    source_reading_policy,
     today_stamp,
     year_counts,
 )
@@ -32,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--focus")
     parser.add_argument("--top", type=int)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--include-references", action="store_true")
     return parser.parse_args()
 
 
@@ -338,6 +340,7 @@ def build_bundle(
     query_logs: list[dict[str, Any]],
     notices: list[str],
     dry_run: bool,
+    source_reading: dict[str, Any],
 ) -> dict[str, Any]:
     readable_web = [record for record in web_records if record.get("available_for_reading")]
     return {
@@ -349,6 +352,7 @@ def build_bundle(
         "dry_run": dry_run,
         "output_path": rel(output),
         "cache_path": rel(cache),
+        "source_reading": source_reading,
         "selected_count": len(local_records) + len(web_records) + len(skipped_records),
         "readable_count": len(local_records) + len(readable_web),
         "skipped_count": len(skipped_records) + (len(web_records) - len(readable_web)),
@@ -426,6 +430,7 @@ def main() -> None:
         query_logs=query_logs,
         notices=notices,
         dry_run=args.dry_run,
+        source_reading=source_reading_policy(config, args),
     )
     write_json(cache, bundle)
 

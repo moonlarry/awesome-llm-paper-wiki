@@ -5,6 +5,7 @@ import html
 import io
 import re
 import tarfile
+import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
@@ -40,8 +41,9 @@ class FullTextPayload:
 
 
 class ArxivHTMLToMarkdown(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, arxiv_id: str = "") -> None:
         super().__init__()
+        self.arxiv_id = arxiv_id
         self.parts: list[str] = []
         self.skip_depth = 0
         self.skip_stack: list[str] = []
@@ -71,6 +73,14 @@ class ArxivHTMLToMarkdown(HTMLParser):
             self.skip_stack.append(tag)
             return
         if self.skip_depth:
+            return
+        if tag == "img":
+            src = attrs_dict.get("src") or ""
+            alt = attrs_dict.get("alt") or attrs_dict.get("title") or ""
+            if src and self.arxiv_id:
+                image_url = resolve_arxiv_html_image_url(self.arxiv_id, src)
+                if image_url:
+                    self.parts.append(f"\n\n![{clean_alt_text(alt)}]({image_url})\n\n")
             return
         if tag == "table" and ("ltx_equation" in classes or "ltx_eqn" in classes):
             self.equation_depth += 1
@@ -136,6 +146,22 @@ def format_math_markdown(tex: str, display: bool) -> str:
     if display:
         return f"\n\n$$\n{tex}\n$$\n\n"
     return f"${tex}$"
+
+
+def resolve_arxiv_html_image_url(arxiv_id: str, src: str) -> str:
+    """Convert relative/absolute image src to full arXiv HTML URL."""
+    base_url = arxiv_html_url(arxiv_id) + "/"
+    full_url = urllib.parse.urljoin(base_url, src)
+    if not full_url.startswith(("https://arxiv.org/", "http://arxiv.org/")):
+        return ""
+    return full_url
+
+
+def clean_alt_text(alt: str) -> str:
+    """Clean alt text for Markdown image syntax."""
+    alt = re.sub(r"\s+", " ", alt).strip()
+    alt = re.sub(r"[\[\]()]", " ", alt)
+    return alt or "arXiv figure"
 
 
 def arxiv_abs_url(arxiv_id: str) -> str:
@@ -206,7 +232,7 @@ def existing_arxiv_identities(direction: str, config: dict[str, Any], include_we
 def fetch_arxiv_html_markdown(arxiv_id: str) -> str:
     data = http_bytes_arxiv(arxiv_html_url(arxiv_id))
     text = data.decode("utf-8", errors="replace")
-    parser = ArxivHTMLToMarkdown()
+    parser = ArxivHTMLToMarkdown(arxiv_id)
     parser.feed(text)
     markdown = parser.markdown()
     if len(markdown) < 1500:
