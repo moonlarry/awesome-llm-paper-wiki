@@ -29,6 +29,11 @@ from report_support import (
     year_counts,
     partition_records_by_source,
     load_canonical_records,
+    extract_numeric_citations,
+    extract_reference_section,
+    count_reference_entries,
+    extract_coverage_matrix_refs,
+    get_confirmed_ids,
 )
 from web_search import run_find
 
@@ -447,15 +452,27 @@ def complete_fulltext_run(config: dict[str, Any], args: argparse.Namespace, outp
     # Initialize evidence files if not exist
     initialize_evidence_files(cache_path)
 
-    # Validate evidence files
-    is_valid, errors = validate_evidence_files(cache_path)
-    if not is_valid:
-        print("Evidence validation failed:")
-        for error in errors:
-            print(f"  - {error}")
-        print(f"\nEvidence files location: {bundle.get('evidence_dir', 'unknown')}")
-        print("Fill required evidence files before completing the run.")
-        raise SystemExit("Completion blocked: evidence validation failed.")
+    # Single unified validation call with explicit report_path
+    is_valid, errors = validate_evidence_files(cache_path, report_path=output_path)
+
+    if errors:
+        print("VALIDATION FAILED")
+        print("")
+        print(f"- coverage_ledger.confirmed_included_count: {confirmed_count}")
+        print(f"- unique_cited_paper_count: {cited_count}")
+        print(f"- coverage_matrix_entry_count: {matrix_count}")
+        print(f"- reference_entry_count: {ref_count}")
+        print("")
+        for error in errors[:5]:
+            print(f"Mismatch: {error}")
+        print("")
+        print("Evidence files:")
+        for name, path in paths.items():
+            status = "EXISTS" if path.exists() else "MISSING"
+            print(f"- {name}: {status}")
+        print("")
+        print("Fix the evidence/report mismatch and re-run --complete.")
+        raise SystemExit("Completion blocked: validation failed.")
 
     return cache_path, bundle
 
