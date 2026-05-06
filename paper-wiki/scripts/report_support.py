@@ -70,18 +70,233 @@ DEFAULT_REFERENCE_SECTION_HEADINGS = [
 ]
 
 
+def source_read_command(bundle_path: Path, ref_id: str) -> str:
+    """Generate the Agent-safe reading command for a bundle record."""
+    return f"python scripts/read_source_for_agent.py --bundle {rel(bundle_path)} --ref-id {ref_id}"
+
+
+def source_read_quiet_command(bundle_path: Path, ref_id: str) -> str:
+    """Generate the quiet Agent-safe reading command (no status output)."""
+    return f"python scripts/read_source_for_agent.py --bundle {rel(bundle_path)} --ref-id {ref_id} --quiet"
+
+
+def image_list_command(bundle_path: Path, ref_id: str) -> str:
+    """Generate the image listing command for a bundle record."""
+    return f"python scripts/read_source_for_agent.py --bundle {rel(bundle_path)} --ref-id {ref_id} --list-images"
+
+
+def source_read_batch_size(config: dict[str, Any]) -> int:
+    """Get batch size from config with validation and bounds."""
+    value = config.get("report_generation", {}).get("source_read_batch_size", 10)
+    try:
+        size = int(value)
+    except (TypeError, ValueError):
+        return 10
+    return min(max(size, 1), 50)
+
+
+def source_read_batch_id(ref_ids: list[str]) -> str:
+    """Generate batch ID from ref_id range."""
+    if not ref_ids:
+        return "batch_empty"
+    return f"batch_{ref_ids[0]}-{ref_ids[-1]}"
+
+
+def source_read_batch_command(bundle_path: Path, ref_ids: list[str], batch_index: int) -> str:
+    """Generate batch reading command with quiet output."""
+    run_key = bundle_path.stem
+    refs = ",".join(ref_ids)
+    batch_id = source_read_batch_id(ref_ids)
+    output_dir = ROOT / "workspace" / "cache" / "agent-safe-source" / run_key / batch_id
+    return (
+        "python scripts/read_source_for_agent.py "
+        f"--bundle {rel(bundle_path)} "
+        f"--refs {refs} "
+        f"--output-dir {rel(output_dir)} "
+        f"--batch-index {batch_index} "
+        "--auto-chunk "
+        "--auto-chunk-size 50000 "
+        "--quiet"
+    )
+
+
+def generate_source_read_batches(
+    bundle_path: Path,
+    readable_records: list[dict[str, Any]],
+    config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Generate source_read_batches structure for bundle."""
+    batch_size = source_read_batch_size(config)
+    ref_ids = [r.get("ref_id", "") for r in readable_records]
+    batches = []
+
+    for batch_start in range(0, len(ref_ids), batch_size):
+        batch_ref_ids = ref_ids[batch_start:batch_start + batch_size]
+        if not batch_ref_ids:
+            continue
+        batch_index = batch_start // batch_size
+        batch_id = source_read_batch_id(batch_ref_ids)
+        output_dir = ROOT / "workspace" / "cache" / "agent-safe-source" / bundle_path.stem / batch_id
+        batches.append({
+            "batch_index": batch_index,
+            "batch_id": batch_id,
+            "ref_ids": batch_ref_ids,
+            "output_dir": rel(output_dir),
+            "manifest_path": rel(output_dir / "manifest.json"),
+            "source_read_batch_command": source_read_batch_command(bundle_path, batch_ref_ids, batch_index),
+        })
+
+    return batches
+
+
+def evidence_dir_for_bundle(bundle_path: Path) -> Path:
+    """Return the evidence directory path for a bundle run."""
+    run_key = bundle_path.stem
+    return ROOT / "workspace" / "cache" / "report-evidence" / run_key
+
+
+def evidence_file_paths(bundle_path: Path) -> dict[str, Path]:
+    """Return paths to all required evidence files."""
+    evidence_dir = evidence_dir_for_bundle(bundle_path)
+    return {
+        "screening": evidence_dir / "screening.jsonl",
+        "paper_notes": evidence_dir / "paper_notes.jsonl",
+        "coverage_ledger": evidence_dir / "coverage_ledger.json",
+        "synthesis_notes": evidence_dir / "synthesis_notes.md",
+        "verification": evidence_dir / "verification.json",
+    }
+
+
+def initialize_evidence_files(bundle_path: Path) -> None:
+    """Create evidence directory and initialize empty evidence files."""
+    evidence_dir = evidence_dir_for_bundle(bundle_path)
+    ensure_dir(evidence_dir)
+    paths = evidence_file_paths(bundle_path)
+
+    if not paths["screening"].exists():
+        paths["screening"].write_text("# Screening decisions\n# Format: JSON lines\n", encoding="utf-8")
+    if not paths["paper_notes"].exists():
+        paths["paper_notes"].write_text("# Paper notes\n# Format: JSON lines\n", encoding="utf-8")
+    if not paths["coverage_ledger"].exists():
+        default_ledger = {
+            "candidate_count": 0,
+            "confirmed_included": [],
+            "metadata_only": [],
+            "excluded_wrong_scope": [],
+            "skipped_unreadable": [],
+            "uncertain_needs_review": [],
+        }
+        import json
+        paths["coverage_ledger"].write_text(json.dumps(default_ledger, indent=2), encoding="utf-8")
+    if not paths["synthesis_notes"].exists():
+        paths["synthesis_notes"].write_text(
+            "# Synthesis Notes\n\n## Method Taxonomy\n\n## Dataset Patterns\n\n## Metric Usage\n\n## Temporal Trends\n\n## Conflicting Findings\n\n## Limitations and Gaps\n",
+            encoding="utf-8",
+        )
+    if not paths["verification"].exists():
+        default_verification = {
+            "citation_check": "pending",
+            "coverage_check": "pending",
+            "evidence_consistency_check": "pending",
+            "notes": [],
+        }
+        paths["verification"].write_text(json.dumps(default_verification, indent=2), encoding="utf-8")
+
+
+def validate_evidence_files(bundle_path: Path) -> tuple[bool, list[str]]:
+    """Validate that all required evidence files exist and are non-empty."""
+    import json
+    paths = evidence_file_paths(bundle_path)
+    errors = []
+
+    for name, path in paths.items():
+        if not path.exists():
+            errors.append(f"Missing evidence file: {rel(path)}")
+            continue
+
+        content = path.read_text(encoding="utf-8").strip()
+        if not content:
+            errors.append(f"Empty evidence file: {rel(path)}")
+            continue
+
+        if name in ("screening", "paper_notes"):
+            lines = [l for l in content.split("\n") if l.strip() and not l.strip().startswith("#")]
+            if not lines:
+                errors.append(f"{name}.jsonl has no data entries")
+
+        elif name == "coverage_ledger":
+            try:
+                data = json.loads(content)
+                if "candidate_count" not in data:
+                    errors.append("coverage_ledger.json missing candidate_count")
+                elif not isinstance(data.get("candidate_count"), int) or data["candidate_count"] <= 0:
+                    errors.append("coverage_ledger.json candidate_count must be > 0")
+
+                required_lists = [
+                    "confirmed_included",
+                    "metadata_only",
+                    "excluded_wrong_scope",
+                    "skipped_unreadable",
+                    "uncertain_needs_review",
+                ]
+                for field in required_lists:
+                    if field not in data:
+                        errors.append(f"coverage_ledger.json missing {field}")
+                    elif not isinstance(data[field], list):
+                        errors.append(f"coverage_ledger.json {field} must be a list")
+            except json.JSONDecodeError as e:
+                errors.append(f"coverage_ledger.json invalid JSON: {e}")
+
+        elif name == "synthesis_notes":
+            lines = [l for l in content.split("\n") if l.strip() and not l.strip().startswith("#")]
+            if len(lines) < 3:
+                errors.append("synthesis_notes.md has insufficient content")
+
+        elif name == "verification":
+            try:
+                data = json.loads(content)
+                for check in ["citation_check", "coverage_check", "evidence_consistency_check"]:
+                    if data.get(check) != "passed":
+                        errors.append(f"verification.json {check} not passed")
+            except json.JSONDecodeError as e:
+                errors.append(f"verification.json invalid JSON: {e}")
+
+    return len(errors) == 0, errors
+
+
 def source_reading_policy(config: dict[str, Any], args: Any | None = None) -> dict[str, Any]:
     include = bool(config.get("report_generation", {}).get("include_reference_sections", False))
     if args is not None and getattr(args, "include_references", False):
         include = True
+    batch_size = source_read_batch_size(config)
     return {
         "include_reference_sections": include,
         "reference_section_headings": DEFAULT_REFERENCE_SECTION_HEADINGS,
         "default_behavior": "include_reference_sections" if include else "skip_reference_sections",
+        "agent_safe_reading": True,
+        "evidence_pipeline_required": True,
+        "preferred_entrypoint": "source_read_batches",
+        "fallback_entrypoint": "records[*].source_read_quiet_command",
+        "manual_debug_entrypoint": "records[*].source_read_command",
+        "batch_size": batch_size,
+        "batch_id_style": "ref_range",
+        "batch_atomic_write": True,
         "instruction": (
-            "When reading records[*].source_path for report writing, read the full Markdown including References."
+            "Prefer source_read_batches[*].source_read_batch_command to create Agent-safe Markdown files in batches. "
+            "Read the generated manifest and per-ref files from each batch output_dir. "
+            "Use records[*].source_read_quiet_command or records[*].source_read_command only for single-paper retry, debugging, or paper-read workflows. "
+            "Remote Markdown images are converted to ordinary Markdown links, preserving URLs without triggering multimodal image handling. "
+            "Read the full Markdown including References. "
+            "Before writing the final report, fill all required evidence files under evidence_dir. "
+            "Required: screening.jsonl, paper_notes.jsonl, coverage_ledger.json, synthesis_notes.md, verification.json."
             if include
-            else "When reading records[*].source_path for report writing, ignore References/Bibliography sections from source papers."
+            else "Prefer source_read_batches[*].source_read_batch_command to create Agent-safe Markdown files in batches. "
+            "Read the generated manifest and per-ref files from each batch output_dir. "
+            "Use records[*].source_read_quiet_command or records[*].source_read_command only for single-paper retry, debugging, or paper-read workflows. "
+            "Remote Markdown images are converted to ordinary Markdown links, preserving URLs without triggering multimodal image handling. "
+            "Ignore References/Bibliography sections from source papers unless explicitly requested. "
+            "Before writing the final report, fill all required evidence files under evidence_dir. "
+            "Required: screening.jsonl, paper_notes.jsonl, coverage_ledger.json, synthesis_notes.md, verification.json."
         ),
     }
 
@@ -275,7 +490,15 @@ def compact_skipped_entry(record: dict[str, Any], reason: str, ref_id: str) -> d
     }
 
 
-def partition_records_by_source(records: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def partition_records_by_source(
+    records: list[dict[str, Any]],
+    bundle_path: Path | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Partition records into readable and skipped, adding safe reading commands.
+
+    This function no longer creates sanitized copies. Instead, it keeps
+    original source_path and adds source_read_command for Agent workflows.
+    """
     readable: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     for idx, record in enumerate(records, start=1):
@@ -290,6 +513,11 @@ def partition_records_by_source(records: list[dict[str, Any]]) -> tuple[list[dic
         normalized = dict(record)
         normalized["ref_id"] = ref_id
         normalized["source_path"] = rel(source_path)
+        normalized["original_source_path"] = rel(source_path)
+        if bundle_path:
+            normalized["source_read_command"] = source_read_command(bundle_path, ref_id)
+            normalized["source_read_quiet_command"] = source_read_quiet_command(bundle_path, ref_id)
+            normalized["image_list_command"] = image_list_command(bundle_path, ref_id)
         readable.append(normalized)
     return readable, skipped
 
@@ -305,7 +533,15 @@ def build_fulltext_run_bundle(
     readable_records: list[dict[str, Any]],
     skipped_records: list[dict[str, Any]],
     source_reading: dict[str, Any] | None = None,
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    evidence_dir = evidence_dir_for_bundle(cache_path)
+    evidence_paths = evidence_file_paths(cache_path)
+
+    source_read_batches = []
+    if config and readable_records:
+        source_read_batches = generate_source_read_batches(cache_path, readable_records, config)
+
     return {
         "workflow": workflow,
         "mode": mode,
@@ -315,7 +551,10 @@ def build_fulltext_run_bundle(
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "output_path": rel(output_path),
         "cache_path": rel(cache_path),
+        "evidence_dir": rel(evidence_dir),
+        "evidence_files": {k: rel(v) for k, v in evidence_paths.items()},
         "source_reading": source_reading or {},
+        "source_read_batches": source_read_batches,
         "selected_count": len(readable_records) + len(skipped_records),
         "readable_count": len(readable_records),
         "skipped_count": len(skipped_records),
@@ -327,6 +566,10 @@ def build_fulltext_run_bundle(
                 "published_year": record_year(record),
                 "direction": str(record.get("direction") or ""),
                 "source_path": str(record.get("source_path") or ""),
+                "original_source_path": str(record.get("original_source_path") or ""),
+                "source_read_command": str(record.get("source_read_command") or ""),
+                "source_read_quiet_command": str(record.get("source_read_quiet_command") or ""),
+                "image_list_command": str(record.get("image_list_command") or ""),
                 "canonical_path": str(record.get("path") or ""),
                 "abstract": str(record.get("abstract") or ""),
                 "keywords": list(record.get("keywords") or []),
