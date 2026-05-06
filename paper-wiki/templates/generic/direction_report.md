@@ -75,6 +75,14 @@
 
 ### Long-term Challenges
 
+## Paper Coverage Matrix
+
+| Ref | Year | Paper | Main Task | Method | Included Reason |
+|-----|------|-------|-----------|--------|-----------------|
+
+<!-- Every confirmed included paper must appear here with a numeric citation marker [N] in the Paper column -->
+<!-- This matrix ensures full-coverage accountability for the direction-report workflow -->
+
 ## References
 
 <!--

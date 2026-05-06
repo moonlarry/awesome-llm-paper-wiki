@@ -69,6 +69,245 @@ DEFAULT_REFERENCE_SECTION_HEADINGS = [
     "references and notes",
 ]
 
+SCREENING_TO_LEDGER_PARTITION = {
+    "confirmed_included": "confirmed_included",
+    "metadata_only_duplicate": "metadata_only",
+    "metadata_only": "metadata_only",
+    "excluded_wrong_scope": "excluded_wrong_scope",
+    "skipped_unreadable": "skipped_unreadable",
+    "uncertain_needs_review": "uncertain_needs_review",
+}
+
+
+def normalize_partition_entries(entries: Any, partition: str = "partition") -> list[str]:
+    """Normalize ledger partition entries to Ref ID strings.
+
+    Accepts both string entries and legacy object entries with ref_id field.
+    Returns list of normalized Ref ID strings.
+    """
+    if not isinstance(entries, list):
+        raise ValueError(f"{partition} must be a list, got {type(entries).__name__}")
+
+    normalized: list[str] = []
+    for idx, entry in enumerate(entries):
+        if isinstance(entry, str):
+            ref_id = entry.strip()
+            if not ref_id:
+                raise ValueError(f"{partition}[{idx}] is an empty Ref ID string")
+            normalized.append(ref_id)
+        elif isinstance(entry, dict):
+            ref_id = entry.get("ref_id")
+            if not isinstance(ref_id, str) or not ref_id.strip():
+                raise ValueError(
+                    f"{partition}[{idx}] legacy object missing non-empty string ref_id: {entry!r}"
+                )
+            normalized.append(ref_id.strip())
+        else:
+            raise ValueError(
+                f"{partition}[{idx}] expected string Ref ID or legacy object with ref_id, "
+                f"got {type(entry).__name__}: {entry!r}"
+            )
+    return normalized
+
+
+def build_coverage_ledger(screening_entries: list[dict[str, Any]]) -> tuple[list[str], dict[str, Any] | None]:
+    """Build coverage_ledger.json from screening.jsonl entries.
+
+    Returns tuple of (errors, ledger). Unknown decisions produce errors.
+    """
+    ledger = {
+        "candidate_count": len(screening_entries),
+        "confirmed_included": [],
+        "metadata_only": [],
+        "excluded_wrong_scope": [],
+        "skipped_unreadable": [],
+        "uncertain_needs_review": [],
+    }
+    errors: list[str] = []
+    for entry in screening_entries:
+        decision = entry.get("decision") or entry.get("status") or ""
+        ref_id = entry.get("ref_id")
+
+        if not decision:
+            errors.append(f"Empty decision for ref_id {ref_id or 'unknown'}")
+            continue
+
+        if decision not in SCREENING_TO_LEDGER_PARTITION:
+            errors.append(f"Unknown screening decision '{decision}' for ref_id {ref_id or 'unknown'}")
+            continue
+
+        partition = SCREENING_TO_LEDGER_PARTITION[decision]
+        if ref_id:
+            ledger[partition].append(ref_id)
+
+    return errors, ledger if not errors else None
+
+
+def get_confirmed_ids(ledger: dict[str, Any]) -> set[str]:
+    """Extract confirmed_included IDs from ledger (handles string or object arrays)."""
+    confirmed = ledger.get("confirmed_included", [])
+    return set(normalize_partition_entries(confirmed, "confirmed_included"))
+
+
+def extract_numeric_citations(report_body: str) -> set[int]:
+    """Extract unique numeric citation markers from report body (before References section)."""
+    grouped = re.findall(r"\[((?:\d+\s*,\s*)*\d+)\]", report_body)
+    markers: list[int] = []
+    for group in grouped:
+        markers.extend(int(part.strip()) for part in group.split(","))
+    return set(markers)
+
+
+def count_reference_entries(reference_section: str) -> int:
+    """Count reference entries starting with numeric markers like [1]."""
+    return len(re.findall(r"^\[\d+\]\s+", reference_section, re.MULTILINE))
+
+
+def extract_reference_section(markdown_text: str) -> str:
+    """Extract the References/Reference List section from report Markdown."""
+    headings = ["## References", "## Reference List", "# References", "# Reference List"]
+    for heading in headings:
+        if heading in markdown_text:
+            start = markdown_text.find(heading)
+            remaining = markdown_text[start + len(heading):]
+            next_section_match = re.search(r"\n#{1,3} ", remaining)
+            if next_section_match:
+                return remaining[:next_section_match.start()]
+            return remaining
+    return ""
+
+
+def extract_coverage_matrix_refs(
+    markdown_text: str,
+) -> tuple[set[str], dict[str, int], list[str]]:
+    """Extract Ref IDs and citation markers from Paper Coverage Matrix table.
+
+    Returns:
+        Tuple of (ref_ids, ref_to_citation, errors)
+    """
+    # Find matrix section, stopping at next heading
+    matrix_start = markdown_text.find("## Paper Coverage Matrix")
+    if matrix_start == -1:
+        return set(), {}, []
+
+    remaining = markdown_text[matrix_start:]
+    next_heading = re.search(r"\n## ", remaining[1:])
+    if next_heading:
+        matrix_section = remaining[: next_heading.start() + 1]
+    else:
+        matrix_section = remaining
+
+    ref_ids: set[str] = set()
+    ref_to_citation: dict[str, int] = {}
+    errors: list[str] = []
+    seen_refs: set[str] = set()
+
+    for line in matrix_section.split("\n"):
+        if not line.startswith("|") or line.startswith("|---"):
+            continue
+
+        cells = [c.strip() for c in line.split("|")]
+        if len(cells) < 4:  # Need at least: empty, Ref, Year, Paper
+            continue
+
+        ref_cell = cells[1]
+        paper_cell = cells[3] if len(cells) > 3 else ""
+
+        ref_match = re.match(r"(R\d+)", ref_cell)
+        if not ref_match:
+            continue
+
+        ref_id = ref_match.group(1)
+
+        # Check for duplicate Ref IDs
+        if ref_id in seen_refs:
+            errors.append(f"Duplicate Ref ID in Coverage Matrix: {ref_id}")
+            continue
+        seen_refs.add(ref_id)
+        ref_ids.add(ref_id)
+
+        # Extract citation marker from Paper column
+        cite_match = re.search(r"\[(\d+)\]", paper_cell)
+        if cite_match:
+            ref_to_citation[ref_id] = int(cite_match.group(1))
+        else:
+            errors.append(f"Missing citation marker for {ref_id} in Coverage Matrix Paper column")
+
+    return ref_ids, ref_to_citation, errors
+
+
+def validate_count_equality(
+    bundle_path: Path,
+    report_path: Path | None = None,
+) -> tuple[bool, list[str]]:
+    """Validate count equality between ledger, citations, coverage matrix, and references."""
+    import json
+    paths = evidence_file_paths(bundle_path)
+    errors: list[str] = []
+
+    ledger_path = paths["coverage_ledger"]
+    if not ledger_path.exists():
+        return False, ["coverage_ledger.json missing"]
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+
+    try:
+        confirmed_ids = get_confirmed_ids(ledger)
+    except ValueError as e:
+        return False, [f"coverage_ledger.json confirmed_included error: {e}"]
+    confirmed_count = len(confirmed_ids)
+
+    if report_path is None:
+        bundle = load_json(bundle_path)
+        output_path_str = bundle.get("output_path", "")
+        if output_path_str:
+            report_path = ROOT / output_path_str
+
+    if report_path is None or not report_path.exists():
+        return False, ["Report Markdown file not found"]
+    report_text = report_path.read_text(encoding="utf-8")
+
+    body_before_refs = report_text
+    for heading in ["## References", "## Reference List"]:
+        if heading in report_text:
+            body_before_refs = report_text[:report_text.find(heading)]
+            break
+
+    cited_markers = extract_numeric_citations(body_before_refs)
+    cited_count = len(cited_markers)
+
+    ref_section = extract_reference_section(report_text)
+    ref_count = count_reference_entries(ref_section)
+
+    matrix_refs, matrix_citations, matrix_errors = extract_coverage_matrix_refs(report_text)
+    matrix_count = len(matrix_refs)
+
+    # Add matrix parsing errors
+    errors.extend(matrix_errors)
+
+    if confirmed_count != cited_count:
+        errors.append(f"confirmed_included_count ({confirmed_count}) != unique_cited_paper_count ({cited_count})")
+    if confirmed_count != ref_count:
+        errors.append(f"confirmed_included_count ({confirmed_count}) != reference_entry_count ({ref_count})")
+    if confirmed_count != matrix_count:
+        errors.append(f"confirmed_included_count ({confirmed_count}) != coverage_matrix_entry_count ({matrix_count})")
+
+    # Check for missing confirmed papers in matrix
+    missing_in_matrix = confirmed_ids - matrix_refs
+    if missing_in_matrix:
+        errors.append(f"Coverage Matrix missing confirmed refs: {sorted(missing_in_matrix)[:5]}")
+
+    # Check for extra refs in matrix not in confirmed
+    extra_in_matrix = matrix_refs - confirmed_ids
+    if extra_in_matrix:
+        errors.append(f"Coverage Matrix has extra refs not in confirmed: {sorted(extra_in_matrix)[:5]}")
+
+    # Check that all confirmed papers have citation markers
+    missing_citations = confirmed_ids - set(matrix_citations.keys())
+    if missing_citations:
+        errors.append(f"Coverage Matrix missing citation markers for: {sorted(missing_citations)[:5]}")
+
+    return len(errors) == 0, errors
+
 
 def source_read_command(bundle_path: Path, ref_id: str) -> str:
     """Generate the Agent-safe reading command for a bundle record."""
@@ -203,11 +442,14 @@ def initialize_evidence_files(bundle_path: Path) -> None:
         paths["verification"].write_text(json.dumps(default_verification, indent=2), encoding="utf-8")
 
 
-def validate_evidence_files(bundle_path: Path) -> tuple[bool, list[str]]:
-    """Validate that all required evidence files exist and are non-empty."""
+def validate_evidence_files(
+    bundle_path: Path,
+    report_path: Path | None = None,
+) -> tuple[bool, list[str]]:
+    """Validate evidence files with count equality checks."""
     import json
     paths = evidence_file_paths(bundle_path)
-    errors = []
+    errors: list[str] = []
 
     for name, path in paths.items():
         if not path.exists():
@@ -219,7 +461,75 @@ def validate_evidence_files(bundle_path: Path) -> tuple[bool, list[str]]:
             errors.append(f"Empty evidence file: {rel(path)}")
             continue
 
-        if name in ("screening", "paper_notes"):
+        if name == "screening":
+            entries = []
+            parse_errors = []
+            file_lines = content.split("\n")
+            for line_number, line in enumerate(file_lines, start=1):
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                try:
+                    entry = json.loads(stripped)
+                    entries.append(entry)
+                except json.JSONDecodeError as e:
+                    parse_errors.append(f"screening.jsonl malformed JSON at line {line_number}: {e}")
+
+            if parse_errors:
+                errors.extend(parse_errors)
+                continue
+
+            if not entries:
+                errors.append(f"{name}.jsonl has no data entries")
+                continue
+
+            ledger_errors, expected_ledger = build_coverage_ledger(entries)
+            errors.extend(ledger_errors)
+
+            ledger_path = paths["coverage_ledger"]
+            if ledger_path.exists() and expected_ledger:
+                try:
+                    actual_ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError as e:
+                    errors.append(f"coverage_ledger.json invalid JSON: {e}")
+                    continue
+
+                for partition in [
+                    "confirmed_included",
+                    "metadata_only",
+                    "excluded_wrong_scope",
+                    "skipped_unreadable",
+                    "uncertain_needs_review",
+                ]:
+                    try:
+                        expected_set = set(
+                            normalize_partition_entries(expected_ledger.get(partition, []), partition)
+                        )
+                    except ValueError as e:
+                        errors.append(f"generated coverage ledger {e}")
+                        continue
+
+                    try:
+                        actual_set = set(
+                            normalize_partition_entries(actual_ledger.get(partition, []), partition)
+                        )
+                    except ValueError:
+                        # The coverage_ledger branch reports malformed ledger entries with
+                        # file/partition/index context; avoid duplicating that error here.
+                        continue
+
+                    if expected_set != actual_set:
+                        missing = expected_set - actual_set
+                        extra = actual_set - expected_set
+                        if missing:
+                            errors.append(f"screening-to-ledger mismatch in {partition}: missing {sorted(missing)[:3]}")
+                        if extra:
+                            errors.append(f"screening-to-ledger mismatch in {partition}: extra {sorted(extra)[:3]}")
+
+                if expected_ledger.get("candidate_count", 0) != actual_ledger.get("candidate_count", 0):
+                    errors.append(f"screening-to-ledger mismatch: candidate_count screening ({expected_ledger.get('candidate_count', 0)}) != ledger ({actual_ledger.get('candidate_count', 0)})")
+
+        elif name == "paper_notes":
             lines = [l for l in content.split("\n") if l.strip() and not l.strip().startswith("#")]
             if not lines:
                 errors.append(f"{name}.jsonl has no data entries")
@@ -244,6 +554,25 @@ def validate_evidence_files(bundle_path: Path) -> tuple[bool, list[str]]:
                         errors.append(f"coverage_ledger.json missing {field}")
                     elif not isinstance(data[field], list):
                         errors.append(f"coverage_ledger.json {field} must be a list")
+                    else:
+                        try:
+                            normalize_partition_entries(data[field], field)
+                        except ValueError as e:
+                            errors.append(f"coverage_ledger.json {e}")
+
+                try:
+                    confirmed_ids = get_confirmed_ids(data)
+                except ValueError as e:
+                    errors.append(f"coverage_ledger.json confirmed_included error: {e}")
+                    confirmed_ids = set()
+
+                total_partitioned = sum(
+                    len(data.get(field, []))
+                    for field in required_lists
+                    if isinstance(data.get(field, []), list)
+                )
+                if total_partitioned != data.get("candidate_count", 0):
+                    errors.append(f"coverage_ledger.json partition sum ({total_partitioned}) != candidate_count ({data.get('candidate_count', 0)})")
             except json.JSONDecodeError as e:
                 errors.append(f"coverage_ledger.json invalid JSON: {e}")
 
@@ -256,10 +585,27 @@ def validate_evidence_files(bundle_path: Path) -> tuple[bool, list[str]]:
             try:
                 data = json.loads(content)
                 for check in ["citation_check", "coverage_check", "evidence_consistency_check"]:
-                    if data.get(check) != "passed":
-                        errors.append(f"verification.json {check} not passed")
+                    status = data.get(check)
+                    if status != "passed":
+                        errors.append(f"verification.json {check} not passed (status: {status})")
+
+                confirmed_count = data.get("confirmed_included_count", 0)
+                cited_count = data.get("unique_cited_paper_count", 0)
+                ref_count = data.get("reference_entry_count", 0)
+                matrix_count = data.get("coverage_matrix_entry_count", 0)
+
+                if confirmed_count != cited_count:
+                    errors.append(f"verification.json count mismatch: confirmed ({confirmed_count}) != cited ({cited_count})")
+                if confirmed_count != ref_count:
+                    errors.append(f"verification.json count mismatch: confirmed ({confirmed_count}) != refs ({ref_count})")
+                if confirmed_count != matrix_count:
+                    errors.append(f"verification.json count mismatch: confirmed ({confirmed_count}) != matrix ({matrix_count})")
             except json.JSONDecodeError as e:
                 errors.append(f"verification.json invalid JSON: {e}")
+
+    count_ok, count_errors = validate_count_equality(bundle_path, report_path=report_path)
+    if not count_ok:
+        errors.extend(count_errors)
 
     return len(errors) == 0, errors
 
@@ -282,21 +628,29 @@ def source_reading_policy(config: dict[str, Any], args: Any | None = None) -> di
         "batch_id_style": "ref_range",
         "batch_atomic_write": True,
         "instruction": (
-            "Prefer source_read_batches[*].source_read_batch_command to create Agent-safe Markdown files in batches. "
-            "Read the generated manifest and per-ref files from each batch output_dir. "
-            "Use records[*].source_read_quiet_command or records[*].source_read_command only for single-paper retry, debugging, or paper-read workflows. "
-            "Remote Markdown images are converted to ordinary Markdown links, preserving URLs without triggering multimodal image handling. "
-            "Read the full Markdown including References. "
-            "Before writing the final report, fill all required evidence files under evidence_dir. "
-            "Required: screening.jsonl, paper_notes.jsonl, coverage_ledger.json, synthesis_notes.md, verification.json."
+            "**SEQUENTIAL EVIDENCE PIPELINE**\n\n"
+            "Stage 1: Execute source_read_batches to create Agent-safe Markdown views.\n\n"
+            "Stage 2: For each read paper, append audit decisions to screening.jsonl and evidence notes to paper_notes.jsonl. "
+            "Example: {\"ref_id\": \"R001\", \"decision\": \"confirmed_included\", \"doi_prefix\": \"10.1016/j.energy\", \"summary\": \"...\"}\n\n"
+            "Stage 3: After all papers read, create validator-compatible coverage_ledger.json with candidate_count, confirmed_included, metadata_only, excluded_wrong_scope, skipped_unreadable, and uncertain_needs_review. "
+            "Screening decision metadata_only_duplicate maps into ledger partition metadata_only.\n\n"
+            "Checkpoint: Output partition counts before report writing.\n\n"
+            "Stage 4: After Stage 3 completes, write report Markdown and synthesis_notes.md.\n\n"
+            "Stage 5: Before finalizing, verify count equality and update verification.json with citation_check, coverage_check, and evidence_consistency_check set to passed.\n\n"
+            "Stage 6: Run report_family.py --complete. The report is not complete until this passes.\n\n"
+            "Required files: screening.jsonl, paper_notes.jsonl, coverage_ledger.json, synthesis_notes.md, verification.json"
             if include
-            else "Prefer source_read_batches[*].source_read_batch_command to create Agent-safe Markdown files in batches. "
-            "Read the generated manifest and per-ref files from each batch output_dir. "
-            "Use records[*].source_read_quiet_command or records[*].source_read_command only for single-paper retry, debugging, or paper-read workflows. "
-            "Remote Markdown images are converted to ordinary Markdown links, preserving URLs without triggering multimodal image handling. "
-            "Ignore References/Bibliography sections from source papers unless explicitly requested. "
-            "Before writing the final report, fill all required evidence files under evidence_dir. "
-            "Required: screening.jsonl, paper_notes.jsonl, coverage_ledger.json, synthesis_notes.md, verification.json."
+            else "**SEQUENTIAL EVIDENCE PIPELINE**\n\n"
+            "Stage 1: Execute source_read_batches to create Agent-safe Markdown views.\n\n"
+            "Stage 2: For each read paper, append audit decisions to screening.jsonl and evidence notes to paper_notes.jsonl. "
+            "Example: {\"ref_id\": \"R001\", \"decision\": \"confirmed_included\", \"doi_prefix\": \"10.1016/j.energy\", \"summary\": \"...\"}\n\n"
+            "Stage 3: After all papers read, create validator-compatible coverage_ledger.json with candidate_count, confirmed_included, metadata_only, excluded_wrong_scope, skipped_unreadable, and uncertain_needs_review. "
+            "Screening decision metadata_only_duplicate maps into ledger partition metadata_only.\n\n"
+            "Checkpoint: Output partition counts before report writing.\n\n"
+            "Stage 4: After Stage 3 completes, write report Markdown and synthesis_notes.md.\n\n"
+            "Stage 5: Before finalizing, verify count equality and update verification.json with citation_check, coverage_check, and evidence_consistency_check set to passed.\n\n"
+            "Stage 6: Run report_family.py --complete. The report is not complete until this passes.\n\n"
+            "Required files: screening.jsonl, paper_notes.jsonl, coverage_ledger.json, synthesis_notes.md, verification.json"
         ),
     }
 
