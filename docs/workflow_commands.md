@@ -140,7 +140,7 @@
 1. **默认路径（全文模式）**：
    - CLI 运行 `report_family.py --mode journal --journal RESS`
    - 生成 `workspace/cache/fulltext-report/journal--ress--all-directions.json`
-   - Agent 读取 bundle 中所有 `records[*].source_path` 全文
+   - Agent 运行每个可读记录的 `records[*].source_read_command` 创建 Agent-safe 临时 Markdown 视图，然后读取该临时文件。不要直接读取 `records[*].source_path`
    - 基于全文证据撰写报告
 
 2. **metadata-only 路径**：
@@ -190,7 +190,7 @@
 1. CLI 运行 `prepare_direction_review.py --direction Battery`
 2. 可选 `--focus "topic"` 聚焦子主题
 3. 生成 `workspace/cache/fulltext-review/{run_key}.json`
-4. Agent 读取 bundle 中所有可读 `records[*].source_path` 全文
+4. Agent 运行每个可读记录的 `records[*].source_read_command` 创建 Agent-safe 临时 Markdown 视图，然后读取该临时文件。不要直接读取 `records[*].source_path`
 5. 使用 `templates/generic/direction_review.md` 撰写综述
 
 **输出**：
@@ -481,7 +481,7 @@ Agent: 前置条件未满足：没有 RESS 期刊的 canonical 页面。
 
 期刊/方向报告默认使用全文模式：
 - CLI 准备 `workspace/cache/fulltext-report/*.json` bundle
-- Agent 必须读取 bundle 中所有 `source_path` 全文
+- Agent 必须运行每个可读记录的 `records[*].source_read_command` 创建 Agent-safe 临时 Markdown 视图，然后读取该临时文件。不要直接读取 `records[*].source_path`
 - 最终结论基于全文证据
 
 使用 `--metadata-only` 可跳过全文阅读，直接生成元数据报告。

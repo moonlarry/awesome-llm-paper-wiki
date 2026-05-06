@@ -18,6 +18,9 @@ from report_support import (
     paper_rank_key,
     partition_records_by_source,
     report_slug,
+    source_read_command,
+    image_list_command,
+    evidence_dir_for_bundle,
     source_reading_policy,
     today_stamp,
     year_counts,
@@ -179,9 +182,10 @@ def review_hints(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def local_bundle_record(record: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "ref_id": str(record.get("ref_id") or ""),
+def local_bundle_record(record: dict[str, Any], bundle_path: Path | None = None) -> dict[str, Any]:
+    ref_id = str(record.get("ref_id") or "")
+    result = {
+        "ref_id": ref_id,
         "origin": "local",
         "available_for_reading": True,
         "title": str(record.get("title") or ""),
@@ -189,6 +193,7 @@ def local_bundle_record(record: dict[str, Any]) -> dict[str, Any]:
         "published_year": str(record.get("year") or record.get("published_year") or ""),
         "direction": str(record.get("direction") or ""),
         "source_path": str(record.get("source_path") or ""),
+        "original_source_path": str(record.get("original_source_path") or str(record.get("source_path") or "")),
         "canonical_path": str(record.get("path") or ""),
         "abstract": str(record.get("abstract") or ""),
         "keywords": list(record.get("keywords") or []),
@@ -201,6 +206,10 @@ def local_bundle_record(record: dict[str, Any]) -> dict[str, Any]:
         "doi": str(record.get("doi") or ""),
         "url": str(record.get("url") or ""),
     }
+    if bundle_path and ref_id:
+        result["source_read_command"] = source_read_command(bundle_path, ref_id)
+        result["image_list_command"] = image_list_command(bundle_path, ref_id)
+    return result
 
 
 def web_bundle_record(
@@ -210,13 +219,15 @@ def web_bundle_record(
     direction: str,
     query: str,
     dry_run: bool,
+    bundle_path: Path | None = None,
 ) -> dict[str, Any]:
     source_path = str(created.get("path") or "")
     absolute_path = ROOT / source_path if source_path else None
     available = False if dry_run else bool(absolute_path and absolute_path.exists())
     title = str(created.get("title") or (result.title if result else ""))
-    return {
-        "ref_id": f"W{index:03d}",
+    ref_id = f"W{index:03d}"
+    record = {
+        "ref_id": ref_id,
         "origin": "web",
         "available_for_reading": available,
         "preview_only": dry_run,
@@ -225,6 +236,7 @@ def web_bundle_record(
         "published_year": str(result.year if result and result.year else ""),
         "direction": direction,
         "source_path": source_path,
+        "original_source_path": source_path,
         "canonical_path": "",
         "abstract": str(result.abstract if result else ""),
         "keywords": [],
@@ -243,6 +255,10 @@ def web_bundle_record(
         "search_query": query,
         "status": str(created.get("status") or ""),
     }
+    if available and bundle_path:
+        record["source_read_command"] = source_read_command(bundle_path, ref_id)
+        record["image_list_command"] = image_list_command(bundle_path, ref_id)
+    return record
 
 
 def web_query_args(direction: str, query: str, top: int, dry_run: bool) -> argparse.Namespace:
@@ -266,6 +282,7 @@ def prepare_web_records(
     queries: list[str],
     top: int,
     dry_run: bool,
+    bundle_path: Path | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[str], bool]:
     if not queries or top <= 0:
         return [], [], [], [], [], False
@@ -306,6 +323,7 @@ def prepare_web_records(
                     direction=direction,
                     query=query,
                     dry_run=dry_run,
+                    bundle_path=bundle_path,
                 )
             )
 
@@ -341,8 +359,22 @@ def build_bundle(
     notices: list[str],
     dry_run: bool,
     source_reading: dict[str, Any],
+    config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    from report_support import evidence_file_paths, generate_source_read_batches, initialize_evidence_files
+
     readable_web = [record for record in web_records if record.get("available_for_reading")]
+    all_readable = local_records + readable_web
+    evidence_dir = evidence_dir_for_bundle(cache)
+    evidence_paths = evidence_file_paths(cache)
+
+    source_read_batches = []
+    if config and all_readable:
+        source_read_batches = generate_source_read_batches(cache, all_readable, config)
+
+    if not dry_run:
+        initialize_evidence_files(cache)
+
     return {
         "workflow": "direction-review",
         "mode": "agent-prep",
@@ -352,13 +384,16 @@ def build_bundle(
         "dry_run": dry_run,
         "output_path": rel(output),
         "cache_path": rel(cache),
+        "evidence_dir": rel(evidence_dir),
+        "evidence_files": {k: rel(v) for k, v in evidence_paths.items()},
         "source_reading": source_reading,
+        "source_read_batches": source_read_batches,
         "selected_count": len(local_records) + len(web_records) + len(skipped_records),
         "readable_count": len(local_records) + len(readable_web),
         "skipped_count": len(skipped_records) + (len(web_records) - len(readable_web)),
         "local_count": len(local_records),
         "web_count": len(web_records),
-        "records": local_records + readable_web,
+        "records": all_readable,
         "local_records": local_records,
         "web_records": web_records,
         "skipped": skipped_records,
@@ -391,7 +426,10 @@ def main() -> None:
     validate_direction(args.direction, config)
 
     local_selected = choose_local_records(config, args.direction, args.focus)
-    readable_local, skipped_local = partition_records_by_source(local_selected)
+    output = output_path(config, args.direction, args.focus)
+    cache = cache_path(args.direction, args.focus)
+
+    readable_local, skipped_local = partition_records_by_source(local_selected, bundle_path=cache)
     if not readable_local:
         raise SystemExit(
             f"No readable source markdown files found for direction '{args.direction}'. Check source_path values or run ingest again."
@@ -405,13 +443,12 @@ def main() -> None:
         queries=queries,
         top=top,
         dry_run=args.dry_run,
+        bundle_path=cache,
     )
 
     if any_formal_created and not args.dry_run:
         rebuild_indexes()
 
-    output = output_path(config, args.direction, args.focus)
-    cache = cache_path(args.direction, args.focus)
     manifest = manifest_path(config)
     ensure_dir(output.parent)
     ensure_dir(cache.parent)
@@ -422,7 +459,7 @@ def main() -> None:
         focus=args.focus,
         output=output,
         cache=cache,
-        local_records=[local_bundle_record(record) for record in readable_local],
+        local_records=[local_bundle_record(record, bundle_path=cache) for record in readable_local],
         web_records=web_records,
         skipped_records=skipped_local,
         context_paths=related_report_paths(config, args.direction, args.focus, readable_local),
@@ -431,6 +468,7 @@ def main() -> None:
         notices=notices,
         dry_run=args.dry_run,
         source_reading=source_reading_policy(config, args),
+        config=config,
     )
     write_json(cache, bundle)
 

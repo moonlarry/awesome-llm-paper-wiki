@@ -378,11 +378,12 @@ def build_direction_metadata_report(config: dict[str, Any], args: argparse.Names
 
 
 def prepare_journal_fulltext_run(config: dict[str, Any], args: argparse.Namespace, output_path: Path) -> tuple[dict[str, Any], list[str]]:
+    from report_support import initialize_evidence_files
     records = select_journal_fulltext_records(config, args.journal, args.direction, args.query)
     if not records:
         raise SystemExit(f"No canonical pages matched journal report filters: {report_target(args)}.")
     cache_path = report_cache_path(config, args.mode, args.journal, args.direction, args.query)
-    readable_records, skipped_records = partition_records_by_source(records)
+    readable_records, skipped_records = partition_records_by_source(records, bundle_path=cache_path)
     bundle = build_fulltext_run_bundle(
         workflow="journal-report",
         mode=args.mode,
@@ -394,16 +395,19 @@ def prepare_journal_fulltext_run(config: dict[str, Any], args: argparse.Namespac
         readable_records=readable_records,
         skipped_records=skipped_records,
         source_reading=source_reading_policy(config, args),
+        config=config,
     )
+    initialize_evidence_files(cache_path)
     return bundle, build_compact_prep_notes(bundle)
 
 
 def prepare_direction_fulltext_run(config: dict[str, Any], args: argparse.Namespace, output_path: Path) -> tuple[dict[str, Any], list[str]]:
+    from report_support import initialize_evidence_files
     records = select_direction_fulltext_records(config, args.direction, args.query)
     if not records:
         raise SystemExit(f"No canonical pages matched query '{args.query}' for {direction_scope_label(args.direction)}.")
     cache_path = report_cache_path(config, args.mode, args.journal, args.direction, args.query)
-    readable_records, skipped_records = partition_records_by_source(records)
+    readable_records, skipped_records = partition_records_by_source(records, bundle_path=cache_path)
     bundle = build_fulltext_run_bundle(
         workflow="direction-report",
         mode=args.mode,
@@ -415,7 +419,9 @@ def prepare_direction_fulltext_run(config: dict[str, Any], args: argparse.Namesp
         readable_records=readable_records,
         skipped_records=skipped_records,
         source_reading=source_reading_policy(config, args),
+        config=config,
     )
+    initialize_evidence_files(cache_path)
     return bundle, build_compact_prep_notes(bundle)
 
 
@@ -429,12 +435,28 @@ def print_fulltext_dry_run(bundle: dict[str, Any]) -> None:
 
 
 def complete_fulltext_run(config: dict[str, Any], args: argparse.Namespace, output_path: Path) -> tuple[Path, dict[str, Any]]:
+    from report_support import validate_evidence_files, initialize_evidence_files
+
     cache_path = report_cache_path(config, args.mode, args.journal, args.direction, args.query)
     if not cache_path.exists():
         raise SystemExit(f"Run bundle not found: {rel(cache_path)}")
     if not output_path.exists():
         raise SystemExit(f"Final report not found: {rel(output_path)}")
     bundle = load_json(cache_path)
+
+    # Initialize evidence files if not exist
+    initialize_evidence_files(cache_path)
+
+    # Validate evidence files
+    is_valid, errors = validate_evidence_files(cache_path)
+    if not is_valid:
+        print("Evidence validation failed:")
+        for error in errors:
+            print(f"  - {error}")
+        print(f"\nEvidence files location: {bundle.get('evidence_dir', 'unknown')}")
+        print("Fill required evidence files before completing the run.")
+        raise SystemExit("Completion blocked: evidence validation failed.")
+
     return cache_path, bundle
 
 

@@ -31,7 +31,7 @@ python scripts/report_family.py --mode journal --journal JOURNAL --metadata-only
 4. Partition records into readable records with valid `source_path` and skipped records.
 5. Audit journal identity from DOI, URL, source-page journal title, or full-text journal heading; do not rely only on folder name or canonical `journal_abbr`.
 6. Save one disposable run bundle under `workspace/cache/fulltext-report/{run_key}.json`.
-7. Read all `records[*].source_path`. Follow `bundle.source_reading` policy. By default, skip source-paper References/Bibliography sections unless `--include-references` is used. This rule only affects source-paper References/Bibliography sections; the final report must still keep its own References section according to the citation policy.
+7. For each readable record, run `records[*].source_read_command` to create an Agent-safe temporary Markdown view, then read that temporary file. Do not read `records[*].source_path` directly. Follow `bundle.source_reading` policy. By default, skip source-paper References/Bibliography sections unless `--include-references` is used. This rule only affects source-paper References/Bibliography sections; the final report must still keep its own References section according to the citation policy.
 8. Write the final report to `library/reports/journal/{journal_key}-report-{date}.md`, and apply the Report Citation Policy.
 8. Include a `Paper Coverage Matrix` when the report claims full coverage.
 9. Log preparation/completion to `workspace/logs/report_generation.md`.
@@ -59,7 +59,7 @@ python scripts/report_family.py --mode direction --direction ExampleDirection --
 3. Apply query matching using title, abstract, keywords, and tag fields.
 4. Partition selected records into readable records with valid `source_path` and skipped records.
 5. Save one disposable run bundle under `workspace/cache/fulltext-report/{run_key}.json`.
-6. Read all `records[*].source_path`. Follow `bundle.source_reading` policy. By default, skip source-paper References/Bibliography sections unless `--include-references` is used. This rule only affects source-paper References/Bibliography sections; the final report must still keep its own References section.
+6. For each readable record, run `records[*].source_read_command` to create an Agent-safe temporary Markdown view, then read that temporary file. Do not read `records[*].source_path` directly. Follow `bundle.source_reading` policy. By default, skip source-paper References/Bibliography sections unless `--include-references` is used. This rule only affects source-paper References/Bibliography sections; the final report must still keep its own References section.
 7. Write the final report to `library/reports/direction/{topic_slug}-report-{date}.md`.
 7. Log preparation/completion to `workspace/logs/report_generation.md`.
 
@@ -207,7 +207,7 @@ python scripts/prepare_direction_review.py --direction ExampleDirection --focus 
 9. Save preparation outputs:
    - `workspace/cache/fulltext-review/{run_key}.json`
    - `workspace/manifests/direction_review_prepare.json`
-10. Read every readable record in the bundle. Follow `bundle.source_reading` policy. By default, skip source-paper References/Bibliography sections unless `--include-references` is used. This rule only affects source-paper References/Bibliography sections; the final review must still keep its own References section according to the citation policy.
+10. For each readable record in the bundle, run `records[*].source_read_command` to create an Agent-safe temporary Markdown view, then read that temporary file. Do not read `records[*].source_path` directly. Follow `bundle.source_reading` policy. By default, skip source-paper References/Bibliography sections unless `--include-references` is used. This rule only affects source-paper References/Bibliography sections; the final review must still keep its own References section according to the citation policy.
 11. Write the final review to `library/reports/review/{direction-or-focus}-review-{date}.md`.
 
 ### Writing rules

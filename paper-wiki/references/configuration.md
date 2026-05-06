@@ -62,7 +62,7 @@
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `report_generation.include_reference_sections` | `false` | 控制 Agent 读取 `records[*].source_path` 时是否包含源论文 References/Bibliography 段。默认跳过；可通过 `--include-references` CLI 参数临时启用。 |
+| `report_generation.include_reference_sections` | `false` | 控制 Agent 读取源论文时是否包含 References/Bibliography 段。Agent 应运行 `records[*].source_read_command` 创建临时视图后读取，不要直接读取 `records[*].source_path`。默认跳过；可通过 `--include-references` CLI 参数临时启用。 |
 
 ## 模板系统 (Template System)
 
