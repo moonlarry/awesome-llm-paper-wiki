@@ -12,6 +12,15 @@
     "regeneration_threshold": 0.2,
     "domain_min_papers": 10
   },
+  "research_workflows": {
+    "external_reviewer": "codex",
+    "external_reviewer_model": "",
+    "external_reviewer_effort": "xhigh",
+    "max_review_rounds": 4,
+    "require_human_checkpoints": true,
+    "novelty_check_sources": ["canonical_pages", "source_markdown", "web_digest"],
+    "live_web_search": false
+  },
   "web_search": {
     "default_top": 10,
     "min_citations": 5,
@@ -48,6 +57,13 @@
 | `directions` | `[]` | `paper/` 下的研究方向文件夹名称列表 |
 | `templates.domain_min_papers` | `10` | 触发领域模板生成的最少文献数量 |
 | `templates.regeneration_threshold` | `0.2` | 触发模板更新的文献增长比例 |
+| `research_workflows.external_reviewer` | `"codex"` | review/audit 工作流默认优先尝试 Codex-compatible MCP reviewer；在 Claude Code 中 reviewer 名称为 `codex` |
+| `research_workflows.external_reviewer_model` | `""` | 外部 reviewer 的可选模型名；为空时使用运行时默认 |
+| `research_workflows.external_reviewer_effort` | `"xhigh"` | 外部 reviewer 的推理强度 |
+| `research_workflows.max_review_rounds` | `4` | `auto-review-loop` / `paper-review-loop` 最大轮数 |
+| `research_workflows.require_human_checkpoints` | `true` | review / revision checkpoint 是否默认需要用户确认 |
+| `research_workflows.novelty_check_sources` | `["canonical_pages","source_markdown","web_digest"]` | `idea-claim-novelty-check` 的默认证据层 |
+| `research_workflows.live_web_search` | `false` | 是否允许 `idea-claim-novelty-check` 额外触发一次实时 `web-find` |
 | `web_search.default_top` | `10` | 联网检索默认最大保存数量 |
 | `web_search.min_citations` | `5` | OpenAlex 默认最低引用量阈值过滤 |
 | `web_search.openalex_api_key` | `""` | 可选 OpenAlex API key，用于保障正常额度访问 |

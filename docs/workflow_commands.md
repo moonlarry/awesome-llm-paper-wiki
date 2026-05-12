@@ -262,6 +262,127 @@
 
 ---
 
+### idea-evidence — Idea 证据准备
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Idea evidence for battery SOH robustness"` | 为后续 idea 生成准备证据包 |
+| `"为这个研究方向准备 idea 证据包"` | 同上（中文） |
+
+**执行内容**：
+- 读取或创建 `workspace/research-briefs/{topic_slug}-research-brief.md`
+- 聚合本地 canonical/source/report 证据
+- 复用 `web-find` / `web-digest` 做网络检索
+- 筛出不少于 50 篇合适网络论文，并对这 50 篇做深读
+- 形成 gap map、contradiction map、transfer opportunities 与 negative space
+
+**输出**：
+- `library/reports/idea/{topic_slug}-idea-evidence-{date}.md`
+- 供 `idea-create` 消费的 evidence pack
+
+---
+
+### idea-create — 研究想法生成
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Generate research ideas from this evidence pack"` | 基于 evidence pack 生成并排序 ideas |
+| `"根据这个研究简报和证据包生成研究想法"` | 同上（中文） |
+
+**执行内容**：
+- 读取 topic brief + `idea-evidence`
+- 生成 8-12 个具体 idea
+- 按可行性、新颖性潜力、影响力、证据支撑排序
+- 对强候选调用 `idea-claim-novelty-check`
+
+**输出**：
+- `library/reports/idea/{topic_slug}-idea-report-{date}.md`
+
+---
+
+### idea-discover — Idea 全流程
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Run the full idea discovery pipeline for battery SOH"` | 运行 idea 全流程 |
+| `"从研究简报开始跑完整 idea workflow"` | 同上（中文） |
+
+**执行内容**：
+- 创建或增量更新主题 research brief；同主题 brief 采用合并式续写，保留既有上下文与更新日志
+- 若已有 proto-idea，先补 `idea-survey`
+- 运行 `idea-evidence`
+- 运行 `idea-create`
+- 对 finalist 调用 `idea-claim-novelty-check`
+
+**输出**：
+- `workspace/research-briefs/{topic_slug}-research-brief.md`
+- `library/reports/idea/{topic_slug}-idea-discovery-{date}.md`
+
+---
+
+### idea-claim-novelty-check — Idea 声明级查新
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Check claim novelty for this idea"` | 对核心技术声明逐条查新 |
+| `"检查这个 idea 的声明级新颖性"` | 同上（中文） |
+
+**执行内容**：
+- 抽取 3-5 条核心技术声明
+- 检索 `canonical_pages` / `source_markdown` / `web_digest`
+- 可选触发实时 `web-find`
+- 形成逐声明证据链与结论
+
+**输出**：
+- `library/reports/idea/{idea_slug}-idea-claim-novelty-{date}.md`
+
+---
+
+### auto-review-loop — 多轮研究审计
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Review my paper"` | 对论文草稿做多轮审稿 |
+| `"Adversarial review this method proposal"` | 对研究输出做对抗性审计 |
+| `"多轮审稿：drafts/my-paper.md"` | 同上（中文） |
+
+**执行内容**：
+- 输入可以是论文草稿、实验报告、方法提案或其他研究输出
+- 默认优先调用 Codex-compatible MCP reviewer；在 Claude Code 中明确调用 `codex` 作为 external reviewer/auditor
+- MCP 不可用时使用 dual-agent review split；仍不可用时进入 single-agent degraded mode 并在报告中标注
+- 默认不覆盖原文稿，但必须给出 final recommended version
+- 维护 issue ledger、round history、evidence basis 与 residual risks
+
+**输出**：
+- `library/reports/review/{slug}-auto-review-{date}.md`
+
+---
+
+### paper-review-loop — 论文审稿改稿闭环
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Paper review loop for RESS"` | 基于目标期刊证据审稿、改稿、复核 |
+| `"Review and revise my paper for this venue"` | 基于 target venue report 形成修改稿并审计 |
+| `"论文审稿改稿闭环：目标期刊 RESS"` | 同上（中文） |
+
+**前置条件**：
+- 需有本地论文草稿
+- 需有 target venue report，或已有兼容的 `resubmit-audit` report
+
+**执行内容**：
+- 读取 target venue report 或 `resubmit-audit` report
+- 只用与论文草稿主题相近的 target-venue papers 作为主要证据
+- 审稿维度包括 venue expectations、novelty framing、experiment sufficiency、claim quality、citation coverage
+- 生成 revised manuscript content
+- 使用同一 evidence basis 对修改稿做 post-revision audit
+- issue 状态可使用 `answered_by_current_text / partially_answered / still_unresolved` 分类
+
+**输出**：
+- `library/reports/review/{slug}-paper-review-loop-{date}.md`
+
+---
+
 ## 网络检索类
 
 ### web-find — 联网检索
@@ -364,6 +485,32 @@
 **输出**：
 - `library/reports/submission/{paper_slug}-revision-for-{journal}-{date}.md`
 - 修改建议清单
+
+---
+
+### resubmit-audit — 转投审计
+
+| 自然语言指令 | 说明 |
+|--------------|------|
+| `"Resubmit audit for RESS"` | 基于目标期刊做转投审计 |
+| `"Venue transfer audit for my paper"` | 生成转投报告和完整修改稿 |
+| `"转投审计：目标期刊 RESS"` | 同上（中文） |
+
+**前置条件**：
+- 需有本地论文草稿
+- 只需提供目标期刊/会议信息；若目标 venue report 不存在，Agent 应先生成或提示生成
+
+**执行内容**：
+- 查找已有 target venue report，优先使用 `library/reports/journal/` 中兼容报告
+- 若无报告，先运行现有 `journal-report`；未来 `venue-report` / `conference-report` 可复用同一契约
+- 从目标报告及其支撑文献中筛选与论文草稿主题相近的文献
+- 形成 fit、novelty framing、experiment sufficiency、claim risk、citation gap 等转投审计
+- 按 citation-audit soft-only 思路，把引用问题转译为正文引用句修改、弱化、保留或删除建议
+- 输出 prioritized revision plan 和 complete revised draft
+- 默认调用 Codex-compatible MCP reviewer；在 Claude Code 中明确调用 `codex` 作为 external auditor；失败后使用 dual-agent，再失败进入 degraded mode
+
+**输出**：
+- `library/reports/submission/{slug}-resubmit-audit-{date}.md`
 
 ---
 

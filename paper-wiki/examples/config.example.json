@@ -39,6 +39,19 @@
   "report_generation": {
     "include_reference_sections": false
   },
+  "research_workflows": {
+    "external_reviewer": "codex",
+    "external_reviewer_model": "",
+    "external_reviewer_effort": "xhigh",
+    "max_review_rounds": 4,
+    "require_human_checkpoints": true,
+    "novelty_check_sources": [
+      "canonical_pages",
+      "source_markdown",
+      "web_digest"
+    ],
+    "live_web_search": false
+  },
   "web_search": {
     "default_top": 10,
     "min_citations": 5,
