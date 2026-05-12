@@ -6,7 +6,7 @@
 
 > A structured, continuously evolving literature survey system powered by LLM agents. It works on local Markdown paper files to organize, tag, analyze, and generate survey reports for academic writing and submission decisions.
 
-## 🎯 What It Does
+## 🎯 What the Repository Can Do
 
 awesome-llm-paper-wiki manages a local Markdown literature vault and lets your LLM agent handle repetitive literature work:
 
@@ -18,14 +18,37 @@ awesome-llm-paper-wiki manages a local Markdown literature vault and lets your L
 | **Single-Paper Reading** | Read one paper with a fixed question template covering its problem, importance, method, mechanism, conclusions, and next steps |
 | **Web Search Integration** | Connect to OpenAlex / Semantic Scholar / arXiv, search papers online, and try to store them into the local source library (API keys configured in `config.json`) |
 | **Submission Guidance** | Score target journals from six dimensions based on the local knowledge network and generate targeted revision suggestions |
+| **Research Idea Discovery** | Discover information gaps from the literature and produce evidence-backed research ideas with per-claim novelty verification |
 
 ## 💡 Why This Project
 
-When using deep research features from LLMs such as Gemini, ChatGPT, Qwen, or DeepSeek, literature platform access limits often mean too few citable papers and incomplete information, which makes the final survey report less reliable in practice.
+This project suits the following common research scenarios:
 
-Traditional literature management platforms such as Zotero are usually centered around PDFs. PDFs can be used as LLM input, but they are less lightweight and less convenient than Markdown, and double-column PDFs often require multimodal processing. Markdown files are smaller, cleaner, and much better suited for long-term LLM workflows. Saving a paper webpage as Markdown is usually as convenient as downloading a PDF, while making later organization, extraction, and reuse much easier.
+1. **Using LLMs like Gemini, ChatGPT, Qwen, or DeepSeek for literature research, but the results are not consistent enough.**
+   General-purpose deep research is often limited by access scope, crawl depth, and context constraints. This project uses a **local Markdown literature vault** as the stable information source and "web search" as the supplementary source, letting the Agent continuously generate reports from a controlled corpus.
 
-For that reason, `awesome-llm-paper-wiki` takes a more autonomous approach: on top of the raw Markdown paper collection, the LLM **gradually extracts, builds, and maintains a dedicated structured knowledge layer**. A paper only needs to be ingested once; after that, it can be tagged, cross-referenced, and continuously compiled into increasingly mature survey and analysis reports as the research evolves.
+2. **Want to quickly see what a direction or journal has been focusing on in recent years.**
+   The mainstream tasks, common methods, frequently used datasets, evaluation metrics, and hot-spot evolution in a direction, or what problem settings and experimental styles a particular journal prefers — all suitable for initial topic exploration, pivot decisions, and submission scouting.
+
+3. **Have many papers but lack a knowledge layer that can continuously accumulate.**
+   Traditional tools lean toward archiving and retrieval. This project continuously generates canonical pages, tags, indexes, and reports on top of the raw Markdown papers, so the same collection of papers can be reused for surveys, topic selection, and submission analysis.
+
+4. **Not only want to "collect papers" but also want the LLM to help you screen and compare them.**
+   When the number of papers is large, the real bottleneck is deciding which ones are worth deep reading, which ones only need skimming, and what the methodological differences between them are. The project supports single-paper deep reading, tag-based statistics, and direction-level reviews, helping you first see the big picture and then focus on what matters.
+
+5. **Struggling to come up with paper ideas, or have a new idea but are not sure if it has already been published.**
+   When entering or opening up a new direction, you may have read many papers but still lack a good idea — let the LLM help you think of a few innovation points. When you have a research direction or concrete technical idea, the hardest question is "has someone already done this?" The project provides the full pipeline of idea-survey → idea-evidence → idea-create → idea-claim-novelty-check. Based on the local literature and web search, it scores each technical claim for novelty and provides evidence provenance, helping you decide whether an idea is worth pursuing.
+
+6. **Want evidence-supported submission guidance rather than experience-based guessing.**
+   If the vault covers the candidate journals, this project can generate journal reports, submission recommendations, and targeted revision suggestions based on the local paper network, turning "where to submit" and "how to revise" into an evidence-supported analysis process.
+
+7. **Have accumulated many papers but don't know how to write a literature review.**
+   The project can generate a review draft based on existing papers and web search results, helping you organize scattered reading into a more structured survey framework.
+
+8. **Let LLMs process Markdown and fully leverage their long-context capabilities.**
+   Compared to PDF, Markdown is lighter, more structurally clear, and more suitable as LLM input. Long-term maintenance is easy through script processing, tag extraction, and citation reuse, letting the LLM process hundreds of papers at once and fully utilize long-context capability.
+
+At its core, `awesome-llm-paper-wiki` is not about "how to do yet another one-off survey" but about "how to turn the papers you have already collected into a local knowledge system that can continuously evolve, be repeatedly reused, and be understood and invoked by Agents." Papers only need to be ingested once; after that, they can be continuously organized, tagged, cross-referenced, and gradually compiled into increasingly mature surveys, statistical analyses, and submission support reports.
 
 ## 🚀 Recommended Workflow
 
@@ -52,7 +75,7 @@ Because journals such as IEEE Transactions and Elsevier often have strong anti-c
 
 **How to collect them:**
 - **Journal papers**: Open the journal paper webpage and save the full text with `Obsidian Web Clipper`. Keeping the English original is recommended; you can also use tools such as Immersive Translate to save mixed bilingual or Chinese Markdown versions.
-- **Conference papers**: Search the paper on arXiv, click `Access Paper`, choose `HTML (experimental)`, then save the full text with `Obsidian Web Clipper`.
+- **Conference papers**: Search the paper on arXiv, click `Access Paper`, choose `HTML (experimental)`, then save the full text with `Obsidian Web Clipper`. **If you have a conference paper list (many available on GitHub), hand it directly to the skills for batch downloading!**
 - **Notes**: Images and formulas are usually preserved well. Tables are often saved as HTML, and the project scripts will convert them into a Markdown-friendly table format.
 
 **Where to put them:**
@@ -87,7 +110,7 @@ templates/domains/{Direction}/      → optional domain templates when they alre
 status / lint                       → inspect template registry status and staleness hints
 ```
 
-#### Step 4: Generate Reports or Submission Guidance
+#### Step 4: Generate Reports or Submission Guidance (when processing many papers, maximize the Agent's reasoning capability)
 
 After papers are ingested, you can run analyses such as:
 
@@ -98,34 +121,72 @@ After papers are ingested, you can run analyses such as:
 "Write a literature review for {topic}" → literature review writing (regular mode cites about 40-80 papers; deep mode about 80-120)
 "Recommend submission"                → journal recommendation (requires a local paper draft)
 "Revision suggestions for {journal}"  → revision suggestions for a target journal or special issue
+"Resubmit audit for {journal}"        → target-venue transfer audit plus a complete revised draft
+"Paper review loop for {journal}"     → venue-evidence-based review, revision, and post-revision audit loop
 ```
 
 ## 🛠️ Full Workflow List
 
-`awesome-llm-paper-wiki` currently includes 18 workflows, and **each one can be triggered independently by instruction.**
+`awesome-llm-paper-wiki` currently includes 25 workflows, and **each one can be triggered independently by instruction.** Grouped by function, ordered by recommended execution sequence within each group.
 
-| # | Workflow | Example Trigger | Module |
-|---|--------|----------|------|
-| 1 | **init** | "initialize vault" / "建库" | Initialization |
-| 2 | **scan-organize** | "scan papers" / "整理期刊" | Preprocessing |
-| 3 | **ingest** | "ingest papers" / "文档入库" | Preprocessing |
-| 4 | **tag** | "assign tags" / "分配打分与标签" | Preprocessing |
-| 5 | **journal-report** | "XXX journal report" / "XXX 期刊报告" | Journal Survey |
-| 6 | **direction-report** | "TSF report" / "time series forecasting 方向报告" | Direction Survey |
-| 7 | **stat-report** | "method stats" / "论文使用方法统计" | Statistical Survey |
-| 8 | **idea-survey** | "idea survey" / "Idea 新颖性调研" | Idea Review |
-| 9 | **web-find** | "web find" / "联网检索论文" | Web Search |
-| 10 | **web-digest** | "daily digest" / "近期 arXiv 精选" | Web Recommendation |
-| 11 | **web-import-clipper** | "import web clipper" / "导入剪藏文件" | New Paper Processing |
-| 12 | **submission-recommend** | "recommend submission" / "投稿推荐" | Submission Guidance |
-| 13 | **revision-suggest** | "revision suggestions" / "修改建议" | Revision Guidance |
-| 14 | **status** | "vault status" / "查看知识库状态" | Environment Check |
-| 15 | **lint** | "health check" / "错误/冲突与安全检查" | Environment Check |
-| 16 | **pipeline** | "full pipeline" / "执行一条龙全流程" | Composite Pipeline |
-| 17 | **paper-read** | "read this paper" / "单篇文献精读" | Single-Paper Reading |
-| 18 | **direction-review** | "direction review" / "方向综述" | Literature Review Writing |
+### 1. Paper Processing & Vault Management
+
+| # | Workflow | Example Trigger | Description |
+|:---:|:---|:---|:---|
+| 1 | **init** | "initialize vault" / "建库" | Initialize vault directory structure and default configuration |
+| 2 | **scan-organize** | "scan papers" / "整理期刊" | Scan paper/ directory and sort files by journal abbreviation |
+| 3 | **web-import-clipper** | "import web clipper" / "导入剪藏文件" | Import new papers from Obsidian Web Clipper and generate canonical pages |
+| 4 | **ingest** | "ingest papers" / "文档入库" | Extract metadata, generate canonical pages, optionally apply auto-tagging |
+| 5 | **tag** | "assign tags" / "分配标签" | Multi-dimensional tag analysis and assignment (task/method/dataset/metric/etc.) |
+| 6 | **pipeline** | "full pipeline" / "执行一条龙全流程" | Composite chain: init → scan → ingest → tag → index → status |
+| 7 | **paper-read** | "read this paper" / "单篇文献精读" | Deep single-paper reading with a fixed question template |
+| 8 | **status** | "vault status" / "查看知识库状态" | Vault-wide status overview (counts, distribution, coverage, templates) |
+| 9 | **lint** | "health check" / "健康检查" | Error/conflict/stale-index/orphan-canonical-page detection |
+
+### 2. Literature Reports
+
+| # | Workflow | Example Trigger | Description |
+|:---:|:---|:---|:---|
+| 10 | **journal-report** | "XXX journal report" / "XXX 期刊报告" | Journal survey report grounded in full-text evidence |
+| 11 | **direction-report** | "TSF report" / "方向报告" | Topic-focused direction survey report grounded in full-text evidence |
+| 12 | **stat-report** | "method stats" / "方法统计" | Statistical reports by method, dataset, metric, and other dimensions |
+
+### 3. Web Search
+
+| # | Workflow | Example Trigger | Description |
+|:---:|:---|:---|:---|
+| 13 | **web-find** | "web find" / "联网检索论文" | Multi-source search (OpenAlex/Semantic Scholar/arXiv) and save as local Markdown |
+| 14 | **web-digest** | "daily digest" / "近期 arXiv 精选" | Fetch recent arXiv preprints for a direction and generate a digest report |
+
+### 4. Idea Discovery
+
+| # | Workflow | Example Trigger | Description |
+|:---:|:---|:---|:---|
+| 15 | **idea-survey** | "idea survey" / "Idea 新颖性调研" | Assess idea similarity and novelty through full-text reading |
+| 16 | **idea-evidence** | "prepare idea evidence" / "整理 idea 证据包" | Aggregate local and ≥50 web papers into an evidence pack for idea generation |
+| 17 | **idea-create** | "generate research ideas" / "生成研究想法" | Generate, filter, and rank concrete research ideas from the evidence pack |
+| 18 | **idea-claim-novelty-check** | "check claim novelty" / "核查声明新颖性" | Per-claim novelty scoring with evidence chains and risk assessment |
+| 19 | **idea-discover** | "idea discovery pipeline" / "idea 发现全流程" | Orchestrate survey→evidence→create→novelty-check pipeline |
+
+### 5. Paper Submission & Improvement
+
+| # | Workflow | Example Trigger | Description |
+|:---:|:---|:---|:---|
+| 20 | **submission-recommend** | "recommend submission" / "投稿推荐" | 6-dimension journal scoring and recommendation based on the local literature network |
+| 21 | **revision-suggest** | "revision suggestions" / "修改建议" | 5-dimension targeted revision suggestions for a specific journal |
+| 22 | **resubmit-audit** | "resubmit audit" / "转投审计" | Target-venue transfer audit with revision advice and a complete revised draft |
+| 23 | **auto-review-loop** | "review my paper" / "多轮审稿" | General multi-round adversarial research audit with a final recommended version |
+| 24 | **paper-review-loop** | "paper review loop" / "论文审稿改稿闭环" | Venue-evidence-grounded review → revision → post-revision audit loop |
+
+### 6. Literature Review Writing
+
+| # | Workflow | Example Trigger | Description |
+|:---:|:---|:---|:---|
+| 25 | **direction-review** | "direction review" / "方向综述" | Write a direction-level literature review (regular 40-80 refs / deep 80-120 refs) |
 
 > **Workflow rule**: unless you explicitly ask for `"full pipeline"`, workflows run independently by default and do not automatically chain themselves. If prerequisites are missing, the agent will tell you what to do first.
+
+> **Review and revision relationship**: `auto-review-loop` is the general research audit workflow and does not overwrite the source by default, but it returns a final recommended version. `resubmit-audit` is target-venue transfer audit and returns a complete revised draft. `paper-review-loop` runs venue-report-grounded review → revision → post-revision audit. All three prefer a Codex-compatible MCP reviewer; in Claude Code the reviewer name is `codex`.
 
 ---
 
@@ -198,6 +259,10 @@ In short: **the more standardized the file, the more stable the extraction; the 
 
 Yes, and it is strongly recommended. The whole system is fundamentally just a Markdown folder structure, so you can open the same vault in local Obsidian while the agent is running, then use backlinks, graph view, and Dataview to inspect the knowledge network and vault statistics.
 
+### ❓ What is the simplest way to use these skills?
+
+Currently the cheapest and most feasible approach is **Codex + Claude Code (with DeepSeek V4 Pro)**. Codex provides MCP reviewer capabilities, Claude Code serves as the main Agent executing the workflows, and DeepSeek V4 Pro serves as the backend model for cost-effective reasoning. This combination covers all 25 workflows without requiring additional paid Agent subscriptions.
+
 ### ❓ Many good agents are paid. What if I do not have one?
 
 1. Upload your collected Markdown papers to a GitHub repository and let an LLM read them from the repo to generate the reports you need, using this project as a template.
@@ -212,6 +277,7 @@ Special thanks to the following repositories for their ideas and inspiration in 
 - [Architectural inspiration from sdyckjq-lab/llm-wiki-skill](https://github.com/sdyckjq-lab/llm-wiki-skill)
 - [Academic workflow inspiration from sjqsgg/Paperwise](https://github.com/sjqsgg/Paperwise)
 - [Survey writing templates from luwill/research-skills](https://github.com/luwill/research-skills)
+- [Automated research ideas from wanshuiyin/Auto-claude-code-research-in-sleep](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)
 
 ## License
 

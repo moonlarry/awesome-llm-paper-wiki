@@ -6,6 +6,13 @@
 - [Workflow 6: direction-report](#workflow-6-direction-report)
 - [Workflow 7: stat-report](#workflow-7-stat-report)
 - [Workflow 8: idea-survey](#workflow-8-idea-survey)
+- [Workflow 19: idea-evidence](#workflow-19-idea-evidence)
+- [Workflow 20: idea-create](#workflow-20-idea-create)
+- [Workflow 21: idea-discover](#workflow-21-idea-discover)
+- [Workflow 22: idea-claim-novelty-check](#workflow-22-idea-claim-novelty-check)
+- [Workflow 23: auto-review-loop](#workflow-23-auto-review-loop)
+- [Workflow 24: resubmit-audit](#workflow-24-resubmit-audit)
+- [Workflow 25: paper-review-loop](#workflow-25-paper-review-loop)
 - [Workflow 12: submission-recommend](#workflow-12-submission-recommend)
 - [Workflow 13: revision-suggest](#workflow-13-revision-suggest)
 - [Workflow 17: paper-read](#workflow-17-paper-read)
@@ -104,6 +111,142 @@ Survey existing literature for similarity to a user's research idea and assess n
 6. Generate report → `library/reports/idea/{idea_slug}-survey-{date}.md`
 
 Do not treat keyword/tag similarity or metadata-only matches as final novelty evidence.
+
+---
+
+## Workflow 19: idea-evidence
+
+Prepare the dedicated evidence pack that `idea-create` consumes.
+
+### Input
+
+- Required: research topic text or `workspace/research-briefs/{topic_slug}-research-brief.md`
+- Optional: direction, scope constraints, excluded directions, or a related `idea-survey` report
+
+### Steps
+
+1. Read or assemble the durable topic brief.
+2. Aggregate local evidence from canonical pages, source Markdown, existing reports, indexes, and related survey output when present.
+3. Run the network evidence path through existing `web-find` / `web-digest` capabilities.
+4. Deduplicate and screen at least 50 suitable network papers.
+5. Deep-read all 50 selected papers beyond abstract skim.
+6. Synthesize gap map, contradiction map, transfer opportunities, underexplored design space, and negative space.
+7. Generate `library/reports/idea/{topic_slug}-idea-evidence-{date}.md` using `templates/generic/idea_evidence.md`.
+
+This workflow only prepares evidence for `idea-create`; it does not replace `direction-review`.
+
+---
+
+## Workflow 20: idea-create
+
+Generate and rank concrete ideas from a topic brief plus an `idea-evidence` pack.
+
+### Input
+
+- Required: `workspace/research-briefs/{topic_slug}-research-brief.md`
+- Required: compatible `library/reports/idea/{topic_slug}-idea-evidence-{date}.md`
+
+### Steps
+
+1. Read the topic brief and evidence pack together.
+2. Generate 8-12 concrete ideas.
+3. Record concept, hypothesis, minimum validation path, contribution type, feasibility, risk, and evidence support for each idea.
+4. Rank by feasibility, novelty promise, expected impact, and evidence support.
+5. Run `idea-claim-novelty-check` for finalists whose novelty depends on distinct technical claims.
+6. Generate `library/reports/idea/{topic_slug}-idea-report-{date}.md`.
+
+---
+
+## Workflow 21: idea-discover
+
+Orchestrate the full idea-family path.
+
+### Steps
+
+1. Create or incrementally merge updates into `workspace/research-briefs/{topic_slug}-research-brief.md`, preserving prior context and an update log for the same topic.
+2. If the user already has a proto-idea, run or refresh `idea-survey`.
+3. Run `idea-evidence`.
+4. Run `idea-create`.
+5. Run `idea-claim-novelty-check` on selected candidate claims or finalist ideas.
+6. Summarize the combined outputs in `library/reports/idea/{topic_slug}-idea-discovery-{date}.md`.
+
+---
+
+## Workflow 22: idea-claim-novelty-check
+
+Check novelty at the claim level and return evidence-backed verdicts.
+
+### Steps
+
+1. Extract 3-5 core technical claims.
+2. Search the configured evidence layers in `research_workflows.novelty_check_sources`.
+3. If `research_workflows.live_web_search` is enabled, reuse `web-find` for a fresh supplementary pass.
+4. Build an evidence chain for each claim.
+5. Assign `LIKELY NOVEL`, `PARTIALLY KNOWN`, `NOT NOVEL`, or `INSUFFICIENT EVIDENCE`.
+6. Generate `library/reports/idea/{idea_slug}-idea-claim-novelty-{date}.md`.
+
+`idea-survey` remains the idea-level similarity workflow; this workflow is the deeper per-claim layer.
+
+---
+
+## Workflow 23: auto-review-loop
+
+Run a general research-review loop for a paper draft, experiment report, method proposal, or related research output.
+
+### Reviewer Route
+
+Prefer a Codex-compatible MCP reviewer. In Claude Code, explicitly call `codex` as the external reviewer/auditor. If unavailable, use a bounded dual-agent split. If that is unavailable, use single-agent degraded mode and label the report.
+
+### Steps
+
+1. Capture review scope, source artifact, reviewer route, evidence basis, and round limit.
+2. Build an issue ledger with severity, evidence, affected section, and whether the current text answers the issue.
+3. Classify major criticisms as `answered_by_current_text`, `partially_answered`, or `still_unresolved`.
+4. Produce revision actions and a final recommended version without overwriting the source by default.
+5. Save `library/reports/review/{slug}-auto-review-{date}.md` using `templates/generic/auto_review.md`.
+
+---
+
+## Workflow 24: resubmit-audit
+
+Audit a paper draft for transfer to a target venue and return both prioritized revision advice and a complete revised draft.
+
+### Input
+
+- Paper draft
+- Target venue information
+
+### Steps
+
+1. Resolve or generate the target venue report, searching existing workflow outputs such as `library/reports/journal/` first.
+2. Identify the manuscript topic, method, dataset, claims, and target-venue fit profile.
+3. Retain only topic-near papers from the venue report as the evidence basis.
+4. Audit fit, novelty framing, evidence gaps, citation risks, experiments, claims, and presentation.
+5. Apply citation soft-only handling when bibliography metadata is frozen: `keep_unchanged`, `keep_metadata_drift_acknowledged`, `soften_citing_sentence`, or `drop_cite_in_body_only`.
+6. Maintain an edit discipline checklist for content that should not change during venue transfer.
+7. Produce a complete revised draft and audit it through the reviewer route.
+8. Save `library/reports/submission/{slug}-resubmit-audit-{date}.md` using `templates/generic/resubmit_audit.md`.
+
+---
+
+## Workflow 25: paper-review-loop
+
+Run a venue-conditioned manuscript review, revision, and post-revision audit loop.
+
+### Input
+
+- Paper draft
+- Target venue report or compatible `resubmit-audit` report
+
+### Steps
+
+1. Load the venue report or upstream `resubmit-audit` report and resolve the topic-near evidence basis.
+2. Review the manuscript against venue expectations, evidence-backed novelty framing, experiment sufficiency, claim quality, and citation coverage.
+3. Build an issue ledger with severity, evidence, revision target, and acceptance blocker status.
+4. Produce revised manuscript content for the current round.
+5. Audit the revised manuscript against the same evidence basis and mark issues as `answered_by_current_text`, `partially_answered`, or `still_unresolved`.
+6. Continue until readiness threshold, round limit, or user stop.
+7. Save `library/reports/review/{slug}-paper-review-loop-{date}.md` using `templates/generic/paper_review_loop.md`.
 
 ---
 
