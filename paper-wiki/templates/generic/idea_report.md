@@ -10,8 +10,8 @@
 
 ## Ranked Ideas
 
-| Rank | Idea | Core Hypothesis | Feasibility | Novelty Promise | Expected Impact | Evidence Support | Main Risk |
-|---:|---|---|---|---|---|---|---|
+| Rank | Idea | Core Hypothesis | Feasibility | Novelty Promise | Extension Axis | Reviewer-Obviousness Risk | Expected Impact | Evidence Support | Main Risk |
+|---:|---|---|---|---|---|---|---|---|---|
 
 ## Shortlist Detail
 
@@ -20,8 +20,11 @@
 - Concept summary: {{idea_1_summary}}
 - Minimum validation path: {{idea_1_validation_path}}
 - Contribution type: {{idea_1_contribution_type}}
+- Extension axis: {{idea_1_extension_axis}}
+- Nontrivial delta beyond routine transfer: {{idea_1_nontrivial_delta}}
 - Supporting evidence: {{idea_1_evidence}}
 - Novelty-check status: {{idea_1_novelty_status}}
+- Reviewer-obviousness risk: {{idea_1_obviousness_risk}}
 - Primary risk: {{idea_1_risk}}
 
 ### {{idea_2_title}}
@@ -29,8 +32,11 @@
 - Concept summary: {{idea_2_summary}}
 - Minimum validation path: {{idea_2_validation_path}}
 - Contribution type: {{idea_2_contribution_type}}
+- Extension axis: {{idea_2_extension_axis}}
+- Nontrivial delta beyond routine transfer: {{idea_2_nontrivial_delta}}
 - Supporting evidence: {{idea_2_evidence}}
 - Novelty-check status: {{idea_2_novelty_status}}
+- Reviewer-obviousness risk: {{idea_2_obviousness_risk}}
 - Primary risk: {{idea_2_risk}}
 
 ## Rejected or Deprioritized Ideas

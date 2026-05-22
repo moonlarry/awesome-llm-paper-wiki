@@ -21,13 +21,14 @@ Assess novelty at the individual research-claim level and return evidence-backed
    - `web_digest`
 3. If `research_workflows.live_web_search` is `true`, reuse `web-find` for a fresh supplementary search.
 4. Build an evidence chain for each claim using the closest prior work, the overlap, and the remaining differentiator.
-5. Assign one verdict per claim:
+5. Run a reviewer-obviousness challenge for each claim: could the closest prior method achieve the same claim by being applied to this problem with only routine task substitution or standard engineering adaptation? If yes, downgrade the claim unless the evidence shows a nontrivial delta in mechanism, objective, function/capability, performance/robustness/efficiency, scenario/domain/constraint, data/benchmark, validation standard, or new scheme.
+6. Assign one verdict per claim:
    - `LIKELY NOVEL`
    - `PARTIALLY KNOWN`
    - `NOT NOVEL`
    - `INSUFFICIENT EVIDENCE`
-6. Produce a short overall recommendation, such as proceed, proceed with caution, or abandon, with justification grounded in the claim table.
-7. Generate `library/reports/idea/{idea_slug}-idea-claim-novelty-{date}.md` using `templates/generic/idea_claim_novelty_check.md`.
+7. Produce a short overall recommendation, such as proceed, proceed with caution, or abandon, with justification grounded in the claim table.
+8. Generate `library/reports/idea/{idea_slug}-idea-claim-novelty-{date}.md` using `templates/generic/idea_claim_novelty_check.md`.
 
 ### Reviewer Routing
 For cross-checking the strongest novelty claims or the nearest-prior-work interpretation, use a Codex-compatible MCP reviewer first, otherwise a fresh independent agent when the runtime supports it, otherwise degraded local analysis. Label degraded local analysis in the output.

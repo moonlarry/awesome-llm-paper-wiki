@@ -26,8 +26,8 @@ If no explicit conference paper file is provided, ignore Conference Seed Mode an
 
 1. Read the topic brief and the latest compatible evidence pack together. If the Conference-Paper Activation Gate was triggered, use the conference-journal adaptation evidence pack from Workflow 19 Conference Seed Mode instead.
 2. Generate 8-12 concrete research ideas grounded in the evidence pack.
-3. For each candidate, record a short concept summary, core hypothesis, minimum validation path, contribution type, feasibility, main risk, and evidence support.
-4. Score and rank candidates by feasibility, novelty promise, expected impact, and evidence support; reduce them to a focused shortlist.
+3. For each candidate, record a short concept summary, core hypothesis, minimum validation path, contribution type, feasibility, main risk, evidence support, extension axis, reviewer-obviousness risk, and the nontrivial delta beyond routine transfer.
+4. Score and rank candidates by feasibility, novelty promise, expected impact, evidence support, extension strength, and reviewer-obviousness risk; reduce them to a focused shortlist.
 5. Run `idea-claim-novelty-check` for the strongest shortlisted ideas when their novelty depends on distinct technical claims.
 6. Capture rejected or deprioritized ideas with the reason they were filtered out.
 7. Generate `library/reports/idea/{topic_slug}-idea-report-{date}.md` using `templates/generic/idea_report.md`.

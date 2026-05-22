@@ -20,8 +20,9 @@ Orchestrate the idea-family path from research brief creation through optional p
 1. If the user already has a proto-idea or prior idea note, run or refresh `idea-survey` to establish the idea-level similarity context before evidence construction.
 2. Run `idea-evidence` to build the dedicated evidence pack for idea generation.
 3. Run `idea-create` to produce and rank candidate ideas.
-4. Run `idea-claim-novelty-check` on selected candidate claims or finalist ideas.
-5. Summarize the combined outputs in `library/reports/idea/{topic_slug}-idea-discovery-{date}.md` using `templates/generic/idea_report.md` as the report scaffold.
+4. Ensure finalist ideas explicitly pass or acknowledge the reviewer-obviousness challenge: whether similar prior methods could be applied directly to the target problem without a nontrivial extension.
+5. Run `idea-claim-novelty-check` on selected candidate claims or finalist ideas.
+6. Summarize the combined outputs in `library/reports/idea/{topic_slug}-idea-discovery-{date}.md` using `templates/generic/idea_report.md` as the report scaffold.
 
 ### Outputs
 - Topic brief: `workspace/research-briefs/{topic_slug}-research-brief.md`

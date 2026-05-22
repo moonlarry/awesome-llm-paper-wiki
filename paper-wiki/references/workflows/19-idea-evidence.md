@@ -24,7 +24,9 @@ Build the dedicated evidence pack that `idea-create` consumes. This is an idea-g
    - gap map
    - contradiction map
    - transfer opportunities
+   - routine-transfer risks where existing methods appear directly portable
    - underexplored design space
+   - extension axes covering function/capability, performance/robustness/efficiency, scenario/domain/constraint, data/benchmark, and new mechanism/scheme
    - negative space or over-crowded directions to avoid
 8. Generate `library/reports/idea/{topic_slug}-idea-evidence-{date}.md` using `templates/generic/idea_evidence.md`.
 
@@ -34,6 +36,7 @@ Build the dedicated evidence pack that `idea-create` consumes. This is an idea-g
 - screened external corpus and exclusion notes
 - deep-read notes for all 50 selected network papers
 - gap, contradiction, transfer-opportunity, and negative-space synthesis
+- routine-transfer cautions and nontrivial extension axes for candidate idea ranking
 
 ### Reviewer Routing
 When a second-opinion evidence check is needed, use a Codex-compatible MCP reviewer first, otherwise a fresh independent agent when the runtime supports it, otherwise degraded local analysis. Label degraded local analysis in the output.
