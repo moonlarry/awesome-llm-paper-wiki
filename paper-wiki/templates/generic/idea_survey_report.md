@@ -38,6 +38,17 @@
 
 ## Novelty Assessment
 
+### Prior-Method Transferability Risk
+
+<!--
+Would a reviewer argue that a similar existing method can be applied to this problem
+directly? If yes, explain why the idea is more than routine transfer, or downgrade
+the novelty framing.
+-->
+
+| Closest Prior Method | Directly Portable to Target Problem? | Routine Adaptation Risk | Nontrivial Delta |
+|---|---|---|---|
+
 ### Method Novelty
 
 <!-- Is the proposed method new? Or a novel combination/adaptation of existing methods? -->
@@ -65,6 +76,13 @@
 
 - Novelty level: {{combination_novelty_level}}
 - Evidence: {{combination_novelty_evidence}}
+
+### Extension-Axis Assessment
+
+<!-- Identify whether the improvement expands function/capability, performance/robustness/efficiency, scenario/domain/constraint, data/benchmark, or a genuinely new mechanism/scheme. -->
+
+| Axis | Claimed Extension | Evidence Basis | Reviewer Risk |
+|---|---|---|---|
 
 ## Potential Risks
 

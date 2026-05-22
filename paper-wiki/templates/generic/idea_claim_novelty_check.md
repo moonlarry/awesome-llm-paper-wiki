@@ -11,10 +11,21 @@
 | Claim ID | Technical Claim | Problem Addressed | Claimed Differentiator |
 |---|---|---|---|
 
+## Reviewer-Obviousness Challenge
+
+<!--
+For each claim, ask whether the closest prior method could solve the target problem
+through routine task substitution or standard engineering adaptation. Application-only
+novelty should be downgraded unless there is a defensible nontrivial delta.
+-->
+
+| Claim ID | Direct Transfer Possible? | Routine Adaptation Risk | Nontrivial Delta Required |
+|---|---|---|---|
+
 ## Claim-Level Novelty Assessment
 
-| Claim ID | Verdict | Closest Prior Work | Overlap | Remaining Differentiator | Risk |
-|---|---|---|---|---|---|
+| Claim ID | Verdict | Closest Prior Work | Overlap | Extension Axis | Remaining Differentiator | Risk |
+|---|---|---|---|---|---|---|
 
 ## Evidence Chains
 

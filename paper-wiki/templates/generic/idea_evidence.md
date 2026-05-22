@@ -49,12 +49,19 @@
 
 ## Transfer Opportunities
 
-| Source Domain / Method | Transfer Target | Rationale | Main Risk |
-|---|---|---|---|
+| Source Domain / Method | Transfer Target | Rationale | Routine Transfer Risk | Main Risk |
+|---|---|---|---|---|
 
 ## Underexplored Design Space
 
 | Space | Current Coverage | Why Underexplored | Possible Research Move |
+|---|---|---|---|
+
+## Extension Axes
+
+<!-- Distinguish real contribution openings from merely applying an existing method to a new problem. -->
+
+| Axis | Evidence Basis | Possible Research Move | Nontriviality Requirement |
 |---|---|---|---|
 
 ## Negative Space
