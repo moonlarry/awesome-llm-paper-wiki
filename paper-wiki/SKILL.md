@@ -115,6 +115,7 @@ Route user intent to the appropriate workflow and reference file:
 - For reviewer-backed workflows (idea-evidence, idea-create, idea-discover, idea-claim-novelty-check): prefer Codex-compatible MCP reviewer, otherwise dual-agent, otherwise degraded single-agent. Label degraded mode.
 - For review/audit workflows (auto-review-loop, resubmit-audit, paper-review-loop): prefer Codex-compatible MCP reviewer. In Claude Code, explicitly call `codex`. Fallback to dual-agent then single-agent degraded.
 - **Conference Seed Mode**: When idea-create is triggered with an explicit conference paper file path, load `references/workflows/19-idea-evidence.md` and execute its `### Conference Seed Mode` section first. The routing table entry for idea-create includes this path; the activation gate is in `references/workflows/20-idea-create.md`.
+- **MCP-first web search**: For web-find and web-digest workflows, MCP tools (`paper-search-mcp`, `arxiv-mcp-server`) are preferred when available. Fallback to CLI (`web_search.py`) when MCP unavailable. At workflow completion, if CLI was used, output MCP installation suggestion. Do NOT auto-install MCP servers; follow official docs if user agrees.
 
 ---
 
