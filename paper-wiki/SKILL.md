@@ -171,7 +171,7 @@ Route user intent to the appropriate workflow and reference file:
 | 14 | status | `references/workflows/14-status.md` | Vault-wide status overview |
 | 15 | lint | `references/workflows/15-lint.md` | Health check: errors, conflicts, stale indexes |
 | 16 | pipeline | `references/workflows/16-pipeline.md` | Composite chain: init → scan → ingest → tag → index → status |
-| 17 | paper-read | `references/workflows/17-paper-read.md` | Deep single-paper reading with fixed question template |
+| 17 | paper-read | `references/workflows/17-paper-read.md` | MIT-style 10-phase deep single-paper reading |
 | 18 | direction-review | `references/workflows/18-direction-review.md` | Direction-level literature review (40-80 / 80-120 refs) |
 | 19 | idea-evidence | `references/workflows/19-idea-evidence.md` | Build evidence pack for idea generation (local + ≥50 web) |
 | 20 | idea-create | `references/workflows/20-idea-create.md` | Generate and rank 8-12 research ideas from evidence pack |

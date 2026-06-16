@@ -229,13 +229,17 @@
 
 **执行内容**：
 - 读取 canonical 页面 + 源文件全文
-- 回答 6 个固定问题：
-  1. 这篇文章解决了什么问题？
-  2. 这个问题为什么重要？
-  3. 使用了什么方法或模型？
-  4. 为什么这个方法能解决问题？
-  5. 核心结论是什么？
-  6. 下一步可以怎么做？
+- 按 MIT 教授式 10 阶段范式精读：
+  1. 问题定义（Problem Formulation）
+  2. 现有方法为什么不行（Why Existing Solutions Fail）
+  3. 作者的核心洞察（Key Insight）
+  4. 从第一性原理推导方法（Method Derivation）
+  5. 数学与理论本质（Mathematical Understanding）
+  6. 实验是否真的证明了作者的观点（Evidence Examination）
+  7. MIT式批判性思考（Critical Thinking）
+  8. 研究地图定位（Research Mapping）
+  9. AI for Science 深度思考（AI for Science Reflection）
+  10. 导师提问环节（Socratic Mode）
 
 **输出**：
 - `library/reports/paper/{date}-{paper_id}-reading.md` — 精读笔记

@@ -6,15 +6,23 @@
 ## Workflow 17: paper-read
 
 ### Purpose
-Read one paper deeply and generate a structured reading note for single-paper understanding.
+Read one paper deeply using an MIT Professor Mode framework. The goal is not to
+summarize what the paper says, but to help the user understand why the work was
+conceived, what problem structure it reveals, how the method follows from the
+problem, whether the experiments prove the claims, and what research questions
+come next.
 
-Answer these questions:
-- What problem does this paper solve?
-- Why is this problem important?
-- What method or model does it use?
-- Why can this method or model solve the problem?
-- What are the core conclusions?
-- What can be done next?
+Use the 10-phase reading paradigm:
+- Phase 1: Problem Formulation
+- Phase 2: Why Existing Solutions Fail
+- Phase 3: Key Insight
+- Phase 4: Method Derivation
+- Phase 5: Mathematical Understanding
+- Phase 6: Evidence Examination
+- Phase 7: Critical Thinking
+- Phase 8: Research Mapping
+- Phase 9: AI for Science Reflection
+- Phase 10: Socratic Mode
 
 ### Input
 - Required: one paper path, title, DOI, canonical id, or source path
@@ -48,6 +56,9 @@ Answer these questions:
    - If a point is inferred rather than explicitly stated, label it as inference.
    - If information is missing, write "Not available in the provided paper text" rather than guessing.
    - Do not use external literature unless the user explicitly asks for comparison.
+   - For Research Mapping, use only the lineage and positioning that can be supported by the paper's Introduction / Related Work / references unless external comparison is explicitly requested.
+   - For Mathematical Understanding, explain why a formula exists and what it means; if the paper has no relevant formula, state that directly.
+   - For AI for Science Reflection, only expand the analysis when the paper is about scientific discovery, scientific modeling, or domain knowledge formation; otherwise state why the phase is not applicable.
    - Because this workflow reads one paper, do not apply the multi-paper Report Citation Policy unless additional papers are used.
 
 6. Save output when the user asks for a file or when a durable note is useful:
@@ -57,23 +68,58 @@ Answer these questions:
 ```
 单篇文献精读：{title}
 
-1. 这篇文章解决了什么问题？
-{answer}
+Phase 1：问题定义（Problem Formulation）
+- Problem Statement:
+- Research Context:
+- Why It Matters:
 
-2. 这个问题为什么重要？
-{answer}
+Phase 2：现有方法为什么不行（Why Existing Solutions Fail）
+- Existing Paradigm:
+- Hidden Assumptions:
+- Failure Modes:
+- Research Gap:
 
-3. 本文使用了什么方法或模型？
-{answer}
+Phase 3：作者的核心洞察（Key Insight）
+- Key Observation:
+- Key Insight:
+- Intuitive Explanation:
 
-4. 为什么这个方法或模型能解决这个问题？
-{answer}
+Phase 4：从第一性原理推导方法（Method Derivation）
+- Method Motivation:
+- Design Logic:
+- Component Analysis:
+- Necessity Analysis:
 
-5. 核心结论是什么？
-{answer}
+Phase 5：数学与理论本质（Mathematical Understanding）
+- Mathematical Intuition:
+- Physical / Statistical Meaning:
+- Alternative Formulations:
 
-6. 下一步可以怎么做？
-{answer}
+Phase 6：实验是否真的证明了作者的观点（Evidence Examination）
+- Hypothesis:
+- Evidence:
+- Missing Evidence:
+- Alternative Explanations:
+
+Phase 7：MIT式批判性思考（Critical Thinking）
+- Strengths:
+- Weaknesses:
+- Reviewer Concerns:
+
+Phase 8：研究地图定位（Research Mapping）
+- Research Lineage:
+- Research Position:
+- Future Directions:
+
+Phase 9：AI for Science 深度思考（AI for Science Reflection）
+- Scientific Value:
+- Knowledge Discovery Value:
+- Generalization Potential:
+
+Phase 10：导师提问环节（Socratic Mode）
+- 5 个理解性问题:
+- 5 个批判性问题:
+- 5 个研究拓展问题:
 
 阅读笔记已保存：library/reports/paper/{date}-{paper_id}-reading.md
 ```

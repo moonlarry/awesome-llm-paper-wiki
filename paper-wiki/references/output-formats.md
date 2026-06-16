@@ -202,23 +202,58 @@ Canonical 页：{canonical_count} / {total}（{pct}% 已入库）
 ```text
 单篇文献精读：{title}
 
-1. 这篇文章解决了什么问题？
-{answer}
+Phase 1：问题定义（Problem Formulation）
+- Problem Statement:
+- Research Context:
+- Why It Matters:
 
-2. 这个问题为什么重要？
-{answer}
+Phase 2：现有方法为什么不行（Why Existing Solutions Fail）
+- Existing Paradigm:
+- Hidden Assumptions:
+- Failure Modes:
+- Research Gap:
 
-3. 本文使用了什么方法或模型？
-{answer}
+Phase 3：作者的核心洞察（Key Insight）
+- Key Observation:
+- Key Insight:
+- Intuitive Explanation:
 
-4. 为什么这个方法或模型能解决这个问题？
-{answer}
+Phase 4：从第一性原理推导方法（Method Derivation）
+- Method Motivation:
+- Design Logic:
+- Component Analysis:
+- Necessity Analysis:
 
-5. 核心结论是什么？
-{answer}
+Phase 5：数学与理论本质（Mathematical Understanding）
+- Mathematical Intuition:
+- Physical / Statistical Meaning:
+- Alternative Formulations:
 
-6. 下一步可以怎么做？
-{answer}
+Phase 6：实验是否真的证明了作者的观点（Evidence Examination）
+- Hypothesis:
+- Evidence:
+- Missing Evidence:
+- Alternative Explanations:
+
+Phase 7：MIT式批判性思考（Critical Thinking）
+- Strengths:
+- Weaknesses:
+- Reviewer Concerns:
+
+Phase 8：研究地图定位（Research Mapping）
+- Research Lineage:
+- Research Position:
+- Future Directions:
+
+Phase 9：AI for Science 深度思考（AI for Science Reflection）
+- Scientific Value:
+- Knowledge Discovery Value:
+- Generalization Potential:
+
+Phase 10：导师提问环节（Socratic Mode）
+- 5 个理解性问题:
+- 5 个批判性问题:
+- 5 个研究拓展问题:
 
 阅读笔记已保存：library/reports/paper/{date}-{paper_id}-reading.md
 ```

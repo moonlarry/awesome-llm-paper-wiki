@@ -15,7 +15,7 @@ awesome-llm-paper-wiki manages a local Markdown literature vault and lets your L
 | **Journal Organization** | Automatically sort papers into `paper/{direction}/{journal}/` |
 | **Multi-Dimensional Tagging** | Analyze complex tags across research task, core method, dataset, evaluation metric, and more |
 | **Automated Survey Reports** | Generate journal reports, direction reports, statistical reports, and literature reviews from existing papers |
-| **Single-Paper Reading** | Read one paper with a fixed question template covering its problem, importance, method, mechanism, conclusions, and next steps |
+| **Single-Paper Reading** | Read one paper with an MIT-style 10-phase framework covering the problem, failed paradigms, key insight, method derivation, evidence, and follow-up questions |
 | **Web Search Integration** | Connect to OpenAlex / Semantic Scholar / arXiv, search papers online, and try to store them into the local source library (API keys configured in `config.json`) |
 | **Submission Guidance** | Score target journals from six dimensions based on the local knowledge network and generate targeted revision suggestions |
 | **Research Idea Discovery** | Discover information gaps from the literature and produce evidence-backed research ideas with per-claim novelty verification |
@@ -139,7 +139,7 @@ After papers are ingested, you can run analyses such as:
 | 4 | **ingest** | "ingest papers" / "文档入库" | Extract metadata, generate canonical pages, optionally apply auto-tagging |
 | 5 | **tag** | "assign tags" / "分配标签" | Multi-dimensional tag analysis and assignment (task/method/dataset/metric/etc.) |
 | 6 | **pipeline** | "full pipeline" / "执行一条龙全流程" | Composite chain: init → scan → ingest → tag → index → status |
-| 7 | **paper-read** | "read this paper" / "单篇文献精读" | Deep single-paper reading with a fixed question template |
+| 7 | **paper-read** | "read this paper" / "单篇文献精读" | MIT-style 10-phase deep single-paper reading |
 | 8 | **status** | "vault status" / "查看知识库状态" | Vault-wide status overview (counts, distribution, coverage, templates) |
 | 9 | **lint** | "health check" / "健康检查" | Error/conflict/stale-index/orphan-canonical-page detection |
 

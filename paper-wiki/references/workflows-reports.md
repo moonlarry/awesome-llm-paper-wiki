@@ -289,7 +289,7 @@ Generate targeted revision suggestions for a paper aimed at a specific journal.
 
 ## Workflow 17: paper-read
 
-Read one paper deeply and generate a structured reading note.
+Read one paper deeply using the MIT Professor Mode 10-phase framework.
 
 ### Input
 
@@ -300,7 +300,7 @@ Read one paper deeply and generate a structured reading note.
 
 1. Locate the paper
 2. Read metadata and content
-3. Answer: problem, importance, method, why it works, conclusions, next steps
+3. Analyze the paper through 10 phases: problem formulation, why existing solutions fail, key insight, method derivation, mathematical understanding, evidence examination, critical thinking, research mapping, AI for Science reflection, and Socratic questions
 4. Generate reading note using `templates/generic/paper_reading.md`
 5. Save to `library/reports/paper/{date}-{paper_id}-reading.md`
 

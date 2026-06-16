@@ -1,4 +1,4 @@
-# Single Paper Reading: {{title}}
+# MIT Professor Mode Paper Reading: {{title}}
 
 > Source: {{source_path_or_canonical_path}}  
 > Generated: {{date}}
@@ -12,65 +12,124 @@
 - DOI / URL:
 - Local path:
 
-## 2. What Problem Does This Paper Solve?
+## Phase 1. Problem Formulation
 
 <!--
-State the concrete research problem. If the paper addresses multiple problems,
-separate the main problem from secondary problems.
+Do not start with the method. Explain the real problem the paper is trying to
+solve, why it matters, what larger research field it belongs to, and whether the
+authors focus on a phenomenon, a root cause, or an engineering effect.
+
+- Problem Statement:
+- Research Context:
+- Why It Matters:
 -->
 
-## 3. Why Is This Problem Important?
+## Phase 2. Why Existing Solutions Fail
 
 <!--
-Explain the practical, scientific, or methodological importance using the
-paper's motivation, application scenario, prior-work limitations, or field
-bottleneck. Mark inferred points as inference.
+Identify the mainstream paradigm before introducing the paper's own method.
+Explain the assumptions behind prior solutions, when those assumptions hold,
+when they fail, and whether the claimed gap would convince a reviewer.
+
+- Existing Paradigm:
+- Hidden Assumptions:
+- Failure Modes:
+- Research Gap:
 -->
 
-## 4. What Method or Model Does The Paper Use?
+## Phase 3. Key Insight
 
 <!--
-Describe the method/model/pipeline, including architecture, key modules, data
-inputs, training or optimization strategy, and evaluation setup when available.
+Explain the core observation that makes the paper possible. Do not quote the
+paper directly. Use language that a new researcher can understand.
+
+- Key Observation:
+- Key Insight:
+- Intuitive Explanation:
 -->
 
-## 5. Why Can This Method or Model Solve The Problem?
+## Phase 4. Method Derivation
 
 <!--
-Explain the mechanism: what property of the method matches the problem, what
-assumptions it relies on, which design choices address prior limitations, and
-what evidence in the paper supports this claim.
+Derive the method from the problem rather than describing it as a black box.
+Follow the chain: problem -> obstacle -> reasoning process -> method design.
+
+- Method Motivation:
+- Design Logic:
+- Component Analysis:
+- Necessity Analysis:
 -->
 
-## 6. Core Conclusions
+## Phase 5. Mathematical Understanding
 
 <!--
-Summarize the main findings. Separate empirical results, theoretical claims,
-and practical implications. Mention datasets, metrics, and comparison baselines
-when available.
+For each important equation, explain why it exists, what physical/statistical
+meaning it carries, whether an equivalent formulation is possible, and how it
+connects to the claimed performance improvement. Do not only define symbols. If
+the paper has no relevant formula, write "Not available in the provided paper
+text".
+
+- Mathematical Intuition:
+- Physical / Statistical Meaning:
+- Alternative Formulations:
 -->
 
-## 7. Limitations and Open Questions
+## Phase 6. Evidence Examination
 
 <!--
-List limitations stated by the authors and limitations inferred from
-experiments, data, assumptions, or evaluation scope. Do not overstate.
+Do not merely repeat experimental results. Map each central hypothesis to the
+experiment that tests it, then check whether the conclusion follows from the
+evidence. Mark logical jumps, missing experiments, and alternative explanations.
+
+- Hypothesis:
+- Evidence:
+- Missing Evidence:
+- Alternative Explanations:
 -->
 
-## 8. What Can Be Done Next?
+## Phase 7. Critical Thinking
 
 <!--
-Give concrete next steps: follow-up experiments, possible method improvements,
-datasets to test, ways to apply this paper to the user's research direction, and
-papers or directions to compare next.
+Evaluate the paper as a top-conference reviewer would. Separate true new ideas
+from incremental contributions and identify claims that are under-supported by
+the provided evidence.
+
+- Strengths:
+- Weaknesses:
+- Reviewer Concerns:
 -->
 
-## 9. Reading Notes
+## Phase 8. Research Mapping
 
 <!--
-Optional short bullets:
-- Key equation / mechanism:
-- Most useful figure/table:
-- Most important sentence:
-- Relevance to my work:
+Position the paper in the research landscape using only the paper's Introduction,
+Related Work, references, and explicitly provided context unless the user asks
+for external comparison.
+
+- Research Lineage:
+- Research Position:
+- Future Directions:
+-->
+
+## Phase 9. AI for Science Reflection
+
+<!--
+Use this phase when the paper belongs to scientific discovery, scientific
+modeling, or domain knowledge formation. If it does not, briefly state that this
+phase is not applicable and explain why.
+
+- Scientific Value:
+- Knowledge Discovery Value:
+- Generalization Potential:
+-->
+
+## Phase 10. Socratic Mode
+
+<!--
+Do not end with a summary. Ask questions that help the reader move from
+understanding this paper to designing the next paper.
+
+- 5 Understanding Questions:
+- 5 Critical Questions:
+- 5 Research Extension Questions:
 -->
